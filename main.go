@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"hirsi/command"
 	"hirsi/command/send"
+	"hirsi/command/server"
+	"hirsi/command/watch"
 	"os"
 
 	"github.com/mitchellh/cli"
@@ -12,7 +14,9 @@ import (
 func main() {
 
 	commands := map[string]cli.CommandFactory{
-		"send": command.NewCommand(&send.SendCommand{}),
+		"send":   command.NewCommand(send.NewSendCommand()),
+		"server": command.NewCommand(server.NewServerCommand()),
+		"watch":  command.NewCommand(watch.NewWatchCommand()),
 	}
 
 	cli := &cli.CLI{

@@ -12,6 +12,10 @@ import (
 
 type SendCommand struct{}
 
+func NewSendCommand() *SendCommand {
+	return &SendCommand{}
+}
+
 func (c *SendCommand) Synopsis() string {
 	return "sends a message"
 }
