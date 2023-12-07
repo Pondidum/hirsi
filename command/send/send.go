@@ -1,8 +1,10 @@
 package send
 
 import (
-	"database/sql"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -10,10 +12,14 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type SendCommand struct{}
+type SendCommand struct {
+	addr string
+}
 
 func NewSendCommand() *SendCommand {
-	return &SendCommand{}
+	return &SendCommand{
+		addr: "http://localhost:5757",
+	}
 }
 
 func (c *SendCommand) Synopsis() string {
@@ -26,53 +32,26 @@ func (c *SendCommand) Flags() *pflag.FlagSet {
 	return flags
 }
 
-var createTable = `
-CREATE TABLE IF NOT EXISTS log(
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	json TEXT NOT NULL
-);
-`
-
 func (c *SendCommand) Execute(args []string) error {
 
-	db, err := sql.Open("sqlite3", "sqlite.db")
+	values := url.Values{}
+	values.Add("message", strings.Join(args, " "))
+
+	res, err := http.PostForm(c.addr+"/api/messages", values)
 	if err != nil {
 		return err
 	}
 
-	defer db.Close()
+	if res.StatusCode < 200 && res.StatusCode > 299 {
+		defer res.Body.Close()
 
-	if _, err := db.Exec(createTable); err != nil {
-		return err
-	}
-
-	json := fmt.Sprintf(`{"text": "%s"}`, strings.Join(args, " "))
-
-	if _, err := db.Exec(`insert into log(json) values(?)`, json); err != nil {
-		return err
-	}
-
-	rows, err := db.Query(`select * from log order by id`)
-	if err != nil {
-		return err
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var e entry
-
-		if err := rows.Scan(&e.id, &e.json); err != nil {
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
 			return err
 		}
 
-		fmt.Printf("%v: %v\n", e.id, e.json)
+		return fmt.Errorf("error from server:\n " + string(body))
 	}
 
 	return nil
-}
-
-type entry struct {
-	id   int
-	json string
 }
