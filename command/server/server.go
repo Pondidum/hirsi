@@ -1,18 +1,24 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/spf13/pflag"
+	"go.opentelemetry.io/otel"
 
 	"github.com/gofiber/fiber/v2"
 
+	// fiberOtel "github.com/psmarcin/fiber-opentelemetry/pkg/fiber-otel"
+	"github.com/gofiber/contrib/otelfiber/v2"
+
 	_ "github.com/mattn/go-sqlite3"
 )
+
+var tr = otel.Tracer("server")
 
 type ServerCommand struct {
 	addr string
@@ -34,21 +40,20 @@ func (c *ServerCommand) Flags() *pflag.FlagSet {
 	return flags
 }
 
-func (c *ServerCommand) Execute(args []string) error {
+func (c *ServerCommand) Execute(ctx context.Context, args []string) error {
 
-	if err := c.initDB(); err != nil {
+	if err := c.initDB(ctx); err != nil {
 		return err
 	}
 
 	app := fiber.New(fiber.Config{})
 
-	app.Use(func(c *fiber.Ctx) error {
-		err := c.Next()
-		fmt.Printf("%v %s %s \n", c.Response().StatusCode(), c.Method(), c.Path())
-		return err
-	})
+	app.Use(otelfiber.Middleware())
 
 	app.Post("/api/messages", func(c *fiber.Ctx) error {
+
+		ctx, span := tr.Start(c.UserContext(), "messages")
+		defer span.End()
 
 		db, err := sql.Open("sqlite3", "hirsi.db")
 		if err != nil {
@@ -69,7 +74,7 @@ func (c *ServerCommand) Execute(args []string) error {
 			return err
 		}
 
-		if _, err := db.Exec(`insert into log(timestamp, json) values(?, ?)`, time.Now(), string(content)); err != nil {
+		if _, err := db.ExecContext(ctx, `insert into log(timestamp, json) values(?, ?)`, time.Now(), string(content)); err != nil {
 			return err
 		}
 
@@ -80,7 +85,7 @@ func (c *ServerCommand) Execute(args []string) error {
 	return app.Listen(c.addr)
 }
 
-func (c *ServerCommand) initDB() error {
+func (c *ServerCommand) initDB(ctx context.Context) error {
 
 	db, err := sql.Open("sqlite3", "hirsi.db")
 	if err != nil {
@@ -96,6 +101,6 @@ CREATE TABLE IF NOT EXISTS log(
 );
 `
 
-	_, err = db.Exec(createTable)
+	_, err = db.ExecContext(ctx, createTable)
 	return err
 }

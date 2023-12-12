@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -33,7 +34,7 @@ func (c *WatchCommand) Flags() *pflag.FlagSet {
 	return flags
 }
 
-func (c *WatchCommand) Execute(args []string) error {
+func (c *WatchCommand) Execute(ctx context.Context, args []string) error {
 
 	db, err := sql.Open("sqlite3", "hirsi.db")
 	if err != nil {

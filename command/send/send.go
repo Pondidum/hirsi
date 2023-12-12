@@ -1,16 +1,24 @@
 package send
 
 import (
+	"context"
 	"fmt"
+	"hirsi/tracing"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
 
 	"github.com/spf13/pflag"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+var tr = otel.Tracer("send")
 
 type SendCommand struct {
 	addr string
@@ -32,12 +40,32 @@ func (c *SendCommand) Flags() *pflag.FlagSet {
 	return flags
 }
 
-func (c *SendCommand) Execute(args []string) error {
+func (c *SendCommand) Execute(ctx context.Context, args []string) error {
+	ctx, span := tr.Start(ctx, "execute")
+	defer span.End()
 
 	values := url.Values{}
 	values.Add("message", strings.Join(args, " "))
 
-	res, err := http.PostForm(c.addr+"/api/messages", values)
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		c.addr+"/api/messages",
+		strings.NewReader(values.Encode()))
+	if err != nil {
+		return tracing.Error(span, err)
+	}
+
+	client := http.Client{
+		Transport: otelhttp.NewTransport(
+			http.DefaultTransport,
+			otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+				return otelhttptrace.NewClientTrace(ctx)
+			}),
+		),
+	}
+
+	res, err := client.Do(req)
 	if err != nil {
 		return err
 	}

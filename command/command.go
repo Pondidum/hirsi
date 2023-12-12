@@ -1,18 +1,21 @@
 package command
 
 import (
+	"context"
 	"fmt"
+	"hirsi/tracing"
 	"os"
 	"strings"
 
 	"github.com/mitchellh/cli"
 	"github.com/spf13/pflag"
+	"go.opentelemetry.io/otel"
 )
 
 type CommandDefinition interface {
 	Synopsis() string
 	Flags() *pflag.FlagSet
-	Execute(args []string) error
+	Execute(ctx context.Context, args []string) error
 }
 
 func NewCommand(definition CommandDefinition) func() (cli.Command, error) {
@@ -39,6 +42,17 @@ func (c *command) Help() string {
 }
 
 func (c *command) Run(args []string) int {
+	ctx := context.Background()
+	shutdown, err := tracing.Configure(ctx, "hirsi", "0.0.1")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	defer shutdown(ctx)
+
+	tr := otel.Tracer("hirsi")
+	ctx, span := tr.Start(ctx, "main")
+	defer span.End()
 
 	flags := c.Flags()
 
@@ -47,7 +61,7 @@ func (c *command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.Execute(flags.Args()); err != nil {
+	if err := c.Execute(ctx, flags.Args()); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}
