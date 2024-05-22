@@ -1,6 +1,7 @@
 package tracing
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -9,6 +10,12 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
+
+func ErrorCtx(ctx context.Context, err error) error {
+	span := trace.SpanFromContext(ctx)
+
+	return Error(span, err)
+}
 
 func Errorf(s trace.Span, format string, a ...interface{}) error {
 	return Error(s, fmt.Errorf(format, a...))
