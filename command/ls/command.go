@@ -1,9 +1,10 @@
-package watch
+package ls
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+	"hirsi/config"
 	"strings"
 
 	"github.com/ryanuber/columnize"
@@ -12,37 +13,38 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type WatchCommand struct {
-	follow bool
-	limit  int
+type LsCommand struct {
+	config *config.Config
 }
 
-func NewWatchCommand() *WatchCommand {
-	return &WatchCommand{}
+func NewLsCommand(config *config.Config) *LsCommand {
+	return &LsCommand{config: config}
 }
 
-func (c *WatchCommand) Synopsis() string {
+func (c *LsCommand) Synopsis() string {
 	return "view the logs"
 }
 
-func (c *WatchCommand) Flags() *pflag.FlagSet {
-
-	flags := pflag.NewFlagSet("watch", pflag.ContinueOnError)
-	flags.BoolVarP(&c.follow, "follow", "f", false, "follow new entries as they arrive")
-	flags.IntVarP(&c.limit, "limit", "", 10, "")
-
+func (c *LsCommand) Flags() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("ls", pflag.ContinueOnError)
 	return flags
 }
 
-func (c *WatchCommand) Execute(ctx context.Context, args []string) error {
+func (c *LsCommand) Execute(ctx context.Context, args []string) error {
 
-	db, err := sql.Open("sqlite3", "hirsi.db")
+	db, err := sql.Open("sqlite3", c.config.DbPath)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	rows, err := db.Query(`select * from log order by timestamp limit ?`, c.limit)
+	query := `
+select log.id, log.stored_at, log.written_at, log.message, json_group_object(tags.key, tags.value) tags
+from log inner join tags on log.id = tags.log_id
+group by log.id, log.stored_at, log.written_at, log.message
+`
+
+	rows, err := db.Query(query)
 	if err != nil {
 		return err
 	}

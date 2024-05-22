@@ -5,6 +5,7 @@ import (
 	"hirsi/command"
 	"hirsi/command/basic"
 	"hirsi/command/initialise"
+	"hirsi/command/ls"
 	"hirsi/config"
 	"os"
 
@@ -16,9 +17,7 @@ func main() {
 	commands := map[string]cli.CommandFactory{
 		"write": command.NewCommand(basic.NewBasicCommand(config.AppConfig)),
 		"init":  command.NewCommand(initialise.NewInitCommand(config.AppConfig)),
-		// "send":   command.NewCommand(send.NewSendCommand()),
-		// "server": command.NewCommand(server.NewServerCommand()),
-		// "watch":  command.NewCommand(watch.NewWatchCommand()),
+		"ls":    command.NewCommand(ls.NewLsCommand(config.AppConfig)),
 	}
 
 	cli := &cli.CLI{
