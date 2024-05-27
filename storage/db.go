@@ -3,6 +3,8 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"hirsi/message"
 	"hirsi/tracing"
 	"os"
@@ -97,4 +99,59 @@ func StoreMessage(ctx context.Context, dbPath string, m *message.Message) error 
 	}
 
 	return nil
+}
+
+func ListMessages(ctx context.Context, dbPath string, recentCount int) ([]*message.Message, error) {
+	ctx, span := tr.Start(ctx, "list_messages")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("db_path", dbPath))
+
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `
+select log.id, log.stored_at, log.written_at, log.message, json_group_object(tags.key, tags.value) tags
+from log inner join tags on log.id = tags.log_id
+group by log.id, log.stored_at, log.written_at, log.message
+order by log.stored_at desc
+limit ?
+`
+
+	//"select * from log sort by stored_at desc limit ?"
+	rows, err := db.QueryContext(ctx, query, recentCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	messages := []*message.Message{}
+
+	for rows.Next() {
+		id := 0
+		m := &message.Message{}
+
+		tag := &TagReader{Target: map[string]string{}}
+
+		if err := rows.Scan(&id, &m.StoredAt, &m.WrittenAt, &m.Message, &tag); err != nil {
+			return nil, err
+		}
+
+		m.Tags = tag.Target
+
+		messages = append(messages, m)
+	}
+
+	return messages, nil
+}
+
+type TagReader struct {
+	Target map[string]string
+}
+
+func (r *TagReader) Scan(src any) error {
+	return json.Unmarshal([]byte(fmt.Sprint(src)), &r.Target)
 }

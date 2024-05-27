@@ -2,9 +2,9 @@ package ls
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"hirsi/config"
+	"hirsi/storage"
 	"strings"
 
 	"github.com/ryanuber/columnize"
@@ -32,70 +32,31 @@ func (c *LsCommand) Flags() *pflag.FlagSet {
 
 func (c *LsCommand) Execute(ctx context.Context, args []string) error {
 
-	db, err := sql.Open("sqlite3", c.config.DbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	query := `
-select log.id, log.stored_at, log.written_at, log.message, json_group_object(tags.key, tags.value) tags
-from log inner join tags on log.id = tags.log_id
-group by log.id, log.stored_at, log.written_at, log.message
-`
-
-	rows, err := db.Query(query)
+	messages, err := storage.ListMessages(ctx, c.config.DbPath, 10)
 	if err != nil {
 		return err
 	}
 
-	defer rows.Close()
+	output := make([]string, len(messages)+1)
+	output[0] = "stored_at | written_at | message | tags"
 
-	cols, err := rows.Columns()
-	if err != nil {
-		return err
-	}
-
-	output := []string{
-		strings.Join(cols, " | "),
-	}
-
-	for rows.Next() {
-
-		values := make([]any, len(cols))
-		for i := range values {
-			values[i] = &RowWriter{}
-		}
-
-		if err := rows.Scan(values...); err != nil {
-			return err
-		}
-
-		outputRow := make([]string, len(cols))
-		for i, v := range values {
-			outputRow[i] = fmt.Sprint(v)
-		}
-
-		output = append(output, strings.Join(outputRow, " | "))
+	for i, m := range messages {
+		output[i+1] = fmt.Sprintf("%s | %s | %s | %s", m.StoredAt, m.WrittenAt, m.Message, tagsCsv(m.Tags))
 	}
 
 	fmt.Println(tableOutput(output))
+
 	return nil
 }
+func tagsCsv(tags map[string]string) string {
 
-type RowWriter struct {
-	value any
+	sb := strings.Builder{}
+	for k, v := range tags {
+		sb.WriteString(fmt.Sprintf("%s=%s,", k, v))
+	}
+
+	return strings.TrimSuffix(sb.String(), ",")
 }
-
-func (r *RowWriter) Scan(src any) error {
-	r.value = src
-	return nil
-}
-
-func (r *RowWriter) String() string {
-	return fmt.Sprint(r.value)
-}
-
 func tableOutput(list []string) string {
 	if len(list) == 0 {
 		return ""
