@@ -20,5 +20,9 @@ func (r *JsonRenderer) Render(message *message.Message) error {
 		return err
 	}
 
+	if _, err := r.Writer.Write([]byte("\n")); err != nil {
+		return err
+	}
+
 	return nil
 }
