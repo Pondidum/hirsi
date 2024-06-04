@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hirsi/command"
 	"hirsi/command/basic"
+	importcmd "hirsi/command/import"
 	"hirsi/command/initialise"
 	"hirsi/command/ls"
 	"hirsi/config"
@@ -15,9 +16,10 @@ import (
 func main() {
 
 	commands := map[string]cli.CommandFactory{
-		"write": command.NewCommand(basic.NewBasicCommand(config.AppConfig)),
-		"init":  command.NewCommand(initialise.NewInitCommand(config.AppConfig)),
-		"ls":    command.NewCommand(ls.NewLsCommand(config.AppConfig)),
+		"write":  command.NewCommand(basic.NewBasicCommand(config.AppConfig)),
+		"init":   command.NewCommand(initialise.NewInitCommand(config.AppConfig)),
+		"ls":     command.NewCommand(ls.NewLsCommand(config.AppConfig)),
+		"import": command.NewCommand(importcmd.NewImportCommand(config.AppConfig)),
 	}
 
 	cli := &cli.CLI{
