@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hirsi/config"
+	"hirsi/enhancement"
 	"hirsi/message"
 	"hirsi/storage"
 	"hirsi/tracing"
@@ -98,7 +99,7 @@ func (c *ImportCommand) importDir(ctx context.Context, dirpath string) error {
 			return tracing.ErrorCtx(ctx, err)
 		}
 
-		if err := c.parseFile(ctx, filename, content); err != nil {
+		if err := c.parseFile(ctx, dirpath, filename, content); err != nil {
 			return err
 		}
 	}
@@ -113,9 +114,10 @@ func (c *ImportCommand) importFile(ctx context.Context, filepath string) error {
 		return tracing.ErrorCtx(ctx, err)
 	}
 
+	dirpath := path.Dir(filepath)
 	filename := path.Base(filepath)
 
-	if err := c.parseFile(ctx, filename, content); err != nil {
+	if err := c.parseFile(ctx, dirpath, filename, content); err != nil {
 		return err
 	}
 
@@ -124,7 +126,7 @@ func (c *ImportCommand) importFile(ctx context.Context, filepath string) error {
 
 var rx = regexp.MustCompile(`^- (\d\d):(\d\d) .*`)
 
-func (c *ImportCommand) parseFile(ctx context.Context, filename string, content []byte) error {
+func (c *ImportCommand) parseFile(ctx context.Context, dirPath string, filename string, content []byte) error {
 
 	fmt.Println("==>", filename)
 	date, err := time.Parse("2006-01-02", strings.TrimSuffix(filename, path.Ext(filename)))
@@ -163,7 +165,7 @@ func (c *ImportCommand) parseFile(ctx context.Context, filename string, content 
 			WrittenAt: entryTime,
 			Message:   entry[8:],
 			Tags: map[string]string{
-				"import.source": filename,
+				"imported": "",
 			},
 		}
 
@@ -172,6 +174,8 @@ func (c *ImportCommand) parseFile(ctx context.Context, filename string, content 
 				return err
 			}
 		}
+
+		message.Tags[enhancement.PwdTag] = dirPath
 
 		if err := storage.StoreMessage(ctx, c.config.DbPath, message); err != nil {
 			return err

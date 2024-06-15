@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+const PwdTag = "pwd"
+
 type PwdEnhancement struct{}
 
 func (e *PwdEnhancement) Enhance(message *message.Message) error {
@@ -13,7 +15,7 @@ func (e *PwdEnhancement) Enhance(message *message.Message) error {
 		return err
 	}
 
-	message.Tags["pwd"] = dir
+	message.Tags[PwdTag] = dir
 
 	return nil
 }

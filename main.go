@@ -15,11 +15,17 @@ import (
 
 func main() {
 
+	cfg, err := config.CreateConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error executing CLI: %s\n", err.Error())
+		os.Exit(1)
+	}
+
 	commands := map[string]cli.CommandFactory{
-		"write":  command.NewCommand(basic.NewBasicCommand(config.AppConfig)),
-		"init":   command.NewCommand(initialise.NewInitCommand(config.AppConfig)),
-		"ls":     command.NewCommand(ls.NewLsCommand(config.AppConfig)),
-		"import": command.NewCommand(importcmd.NewImportCommand(config.AppConfig)),
+		"write":  command.NewCommand(basic.NewBasicCommand(cfg)),
+		"init":   command.NewCommand(initialise.NewInitCommand(cfg)),
+		"ls":     command.NewCommand(ls.NewLsCommand(cfg)),
+		"import": command.NewCommand(importcmd.NewImportCommand(cfg)),
 	}
 
 	cli := &cli.CLI{
