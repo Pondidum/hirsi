@@ -10,7 +10,7 @@ func TestObsidianLinkin(t *testing.T) {
 
 	input := `- 10:45 TEAMCITY: teamcity build for proxy - [https://teamcity.example.com/project.html?projectId=someproject&tab=projectOverview](https://teamcity.example.com/project.html?projectId=someproject&tab=projectOverview)`
 
-	r, err := NewObsidianRenderer(".")
+	r, err := NewObsidianRenderer(".", "teamcity")
 	assert.NoError(t, err)
 
 	actual := r.linkify(input)

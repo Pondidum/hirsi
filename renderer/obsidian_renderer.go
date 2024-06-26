@@ -21,7 +21,7 @@ type ObsidianRenderer struct {
 	terms map[string]*regexp.Regexp
 }
 
-func NewObsidianRenderer(dirpath string) (*ObsidianRenderer, error) {
+func NewObsidianRenderer(dirpath string, titles ...string) (*ObsidianRenderer, error) {
 	tpl, err := template.New("").Parse(`- {{ .WrittenAt.Format "15:04" }} {{ .Tags }}
 	{{ .Message }}
 `)
@@ -35,7 +35,7 @@ func NewObsidianRenderer(dirpath string) (*ObsidianRenderer, error) {
 	}
 
 	// add the custom titles in from somewhere later
-	renderer.PopulateAutoLinker([]string{})
+	renderer.PopulateAutoLinker(titles)
 
 	return renderer, nil
 }
