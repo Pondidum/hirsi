@@ -12,7 +12,17 @@ type Config struct {
 }
 
 func CreateConfig() (*Config, error) {
-	obs, err := renderer.NewObsidianRenderer("/home/andy/dev/projects/hirsi/obsidian-dev/hirsi-dev")
+	epicObsidian, err := renderer.NewObsidianRenderer("/home/andy/dev/epic/obsidian")
+	if err != nil {
+		return nil, err
+	}
+
+	epicPlain, err := renderer.NewLogRenderer("/home/andy/dev/epic/log-plain")
+	if err != nil {
+		return nil, err
+	}
+
+	plain, err := renderer.NewLogRenderer("/home/andy/log")
 	if err != nil {
 		return nil, err
 	}
@@ -23,8 +33,14 @@ func CreateConfig() (*Config, error) {
 			&enhancement.PwdEnhancement{},
 		},
 		Renderers: []renderer.Renderer{
-			// &renderer.JsonRenderer{Writer: os.Stderr},
-			obs,
+			renderer.NewFilteredRenderer(
+				renderer.HasTagWithPrefix("pwd", "/home/andy/dev/epic"),
+				renderer.NewCompositeRenderer([]renderer.Renderer{epicObsidian, epicPlain}),
+			),
+			renderer.NewFilteredRenderer(
+				renderer.HasTagWithoutPrefix("pwd", "/home/andy/dev/epic"),
+				plain,
+			),
 		},
 	}, nil
 

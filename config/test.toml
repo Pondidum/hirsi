@@ -1,0 +1,32 @@
+
+[filter.only-secret]
+type = "tag-with-prefix"
+tag = "pwd"
+prefix = "/home/andy/dev/secret"
+
+[filter.not-secret]
+type = "tag-without-prefix"
+tag = "pwd"
+prefix = "/home/andy/dev/secret"
+
+
+[renderer.plain]
+type = "log"
+path = "/home/andy/log"
+
+[renderer.secret-plain]
+type = "log"
+path = "/home/andy/dev/secret/log-plain"
+
+[renderer.secret-obsidian]
+type = "obsidian"
+path = "/home/andy/dev/projects/hirsi/obsidian-dev/hirsi-dev"
+titles = ["teamcity", "devportal", "codefresh"]
+
+[[pipeline]]
+filters = ["only-secret"]
+renderers = ["secret-plain", "secret-obsidian"]
+
+[[pipeline]]
+filters = ["not-secret"]
+renderers = ["plain"]

@@ -14,7 +14,7 @@ func TestCompositeRenderer(t *testing.T) {
 		renderers[i] = &MemoryRenderer{}
 	}
 
-	composite := NewCompositeRenderer(renderers...)
+	composite := NewCompositeRenderer(renderers)
 
 	err := composite.Render(&message.Message{
 		Message: "the message",

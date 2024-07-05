@@ -11,7 +11,7 @@ type CompositeRenderer struct {
 	renderers []Renderer
 }
 
-func NewCompositeRenderer(renderers ...Renderer) *CompositeRenderer {
+func NewCompositeRenderer(renderers []Renderer) *CompositeRenderer {
 	return &CompositeRenderer{
 		renderers: renderers,
 	}
