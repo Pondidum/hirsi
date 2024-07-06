@@ -103,7 +103,15 @@ var rendererFactories = map[string]func(meta toml.MetaData, p toml.Primitive) (r
 			return nil, err
 		}
 
-		return renderer.NewObsidianRenderer(cfg.Path, cfg.Titles...)
+		r, err := renderer.NewObsidianRenderer(cfg.Path)
+		if err != nil {
+			return nil, err
+		}
+
+		r.AddTitles(cfg.Titles)
+		r.PopulateAutoLinker()
+
+		return r, nil
 	},
 	"log": func(meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error) {
 

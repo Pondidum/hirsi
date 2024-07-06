@@ -14,14 +14,13 @@ import (
 )
 
 type ObsidianRenderer struct {
-	// Writer io.Writer
-	Path     string //./obsidian-dev/hirsi-dev
+	path     string //./obsidian-dev/hirsi-dev
 	template *template.Template
 
 	terms map[string]*regexp.Regexp
 }
 
-func NewObsidianRenderer(dirpath string, titles ...string) (*ObsidianRenderer, error) {
+func NewObsidianRenderer(dirpath string) (*ObsidianRenderer, error) {
 	tpl, err := template.New("").Parse(`- {{ .WrittenAt.Format "15:04" }} {{ .Tags }}
 	{{ .Message }}
 `)
@@ -30,21 +29,34 @@ func NewObsidianRenderer(dirpath string, titles ...string) (*ObsidianRenderer, e
 	}
 
 	renderer := &ObsidianRenderer{
-		Path:     dirpath,
+		terms:    map[string]*regexp.Regexp{},
+		path:     dirpath,
 		template: tpl,
 	}
-
-	// add the custom titles in from somewhere later
-	renderer.PopulateAutoLinker(titles)
-
 	return renderer, nil
 }
 
-func (r *ObsidianRenderer) PopulateAutoLinker(titles []string) error {
-	logPath := path.Join(r.Path, "log")
-	terms := map[string]*regexp.Regexp{}
+func (r *ObsidianRenderer) AddTitles(titles []string) error {
 
-	err := filepath.WalkDir(r.Path, func(p string, d fs.DirEntry, e error) error {
+	for _, title := range titles {
+		if _, found := r.terms[title]; found {
+			continue
+		}
+
+		var err error
+		fmt.Println("add title", title)
+		if r.terms[title], err = regexp.Compile(`(?i)^(\W*?)(` + title + `)(\W*?)$`); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *ObsidianRenderer) PopulateAutoLinker() error {
+	logPath := path.Join(r.path, "log")
+
+	return filepath.WalkDir(r.path, func(p string, d fs.DirEntry, e error) error {
 		if d.IsDir() {
 			return nil
 		}
@@ -58,36 +70,23 @@ func (r *ObsidianRenderer) PopulateAutoLinker(titles []string) error {
 		}
 
 		term := strings.TrimSuffix(d.Name(), path.Ext(d.Name()))
-		fmt.Println("add term", term)
-		rx, err := regexp.Compile(`(?i)^(\W*?)(` + term + `)(\W*?)$`)
-		if err != nil {
-			return err
+		if _, found := r.terms[term]; !found {
+
+			fmt.Println("add term", term)
+			rx, err := regexp.Compile(`(?i)^(\W*?)(` + term + `)(\W*?)$`)
+			if err != nil {
+				return err
+			}
+			r.terms[term] = rx
+
 		}
-		terms[term] = rx
+
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	for _, title := range titles {
-		if _, found := terms[title]; found {
-			continue
-		}
-
-		var err error
-		fmt.Println("add title", title)
-		if terms[title], err = regexp.Compile(`(?i)^(\W*?)(` + title + `)(\W*?)$`); err != nil {
-			return err
-		}
-	}
-
-	r.terms = terms
-	return nil
 }
 
 func (r *ObsidianRenderer) Render(message *message.Message) error {
-	logPath := path.Join(r.Path, "log")
+	logPath := path.Join(r.path, "log")
 
 	if err := os.MkdirAll(logPath, os.ModePerm); err != nil {
 		return err
