@@ -1,8 +1,11 @@
 package config
 
 import (
+	"bytes"
 	"hirsi/enhancement"
 	"hirsi/renderer"
+	"os"
+	"path"
 )
 
 type Config struct {
@@ -12,36 +15,50 @@ type Config struct {
 }
 
 func CreateConfig() (*Config, error) {
-	epicObsidian, err := renderer.NewObsidianRenderer("/home/andy/dev/epic/obsidian")
+	return createConfigFromEnvironment()
+}
+
+func createConfigFromEnvironment() (*Config, error) {
+	filepath := os.Getenv("HIRSI_CONFIG")
+	if filepath == "" {
+
+		if xdgData := os.Getenv("XDG_CONFIG_HOME"); xdgData == "" {
+			filepath = path.Join(xdgData, "hirsi/hirsi.toml")
+		} else {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return nil, err
+			}
+
+			filepath = path.Join(home, ".config/hirsi/hirsi.toml")
+		}
+	}
+
+	content, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}
 
-	epicPlain, err := renderer.NewLogRenderer("/home/andy/dev/epic/log-plain")
+	cfg, err := Parse(bytes.NewReader(content))
 	if err != nil {
 		return nil, err
 	}
 
-	plain, err := renderer.NewLogRenderer("/home/andy/log")
-	if err != nil {
+	if cfg.DbPath, err = dbPath(); err != nil {
 		return nil, err
 	}
 
-	return &Config{
-		DbPath: "/home/andy/.local/hirsi/hirsi.db",
-		Enhancements: []enhancement.Enhancement{
-			&enhancement.PwdEnhancement{},
-		},
-		Renderers: []renderer.Renderer{
-			renderer.NewFilteredRenderer(
-				renderer.HasTagWithPrefix("pwd", "/home/andy/dev/epic"),
-				renderer.NewCompositeRenderer([]renderer.Renderer{epicObsidian, epicPlain}),
-			),
-			renderer.NewFilteredRenderer(
-				renderer.HasTagWithoutPrefix("pwd", "/home/andy/dev/epic"),
-				plain,
-			),
-		},
-	}, nil
+	return cfg, nil
+}
 
+func dbPath() (string, error) {
+	if xdgData := os.Getenv("XDG_DATA_HOME"); xdgData == "" {
+		return path.Join(xdgData, "hirsi/hirsi.db"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(home, ".local/share/hirsi/hirsi.db"), nil
 }

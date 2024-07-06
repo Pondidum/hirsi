@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hirsi/enhancement"
 	"hirsi/renderer"
+	"io"
 
 	"github.com/BurntSushi/toml"
 )
@@ -17,9 +18,9 @@ type ConfigFile struct {
 	}
 }
 
-func Parse(content string) (*Config, error) {
+func Parse(reader io.Reader) (*Config, error) {
 	cfg := &ConfigFile{}
-	meta, err := toml.Decode(content, &cfg)
+	meta, err := toml.NewDecoder(reader).Decode(&cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +48,6 @@ func Parse(content string) (*Config, error) {
 	}
 
 	config := &Config{
-		DbPath: "/home/andy/.local/hirsi/hirsi.db",
 		Enhancements: []enhancement.Enhancement{
 			&enhancement.PwdEnhancement{},
 		},
