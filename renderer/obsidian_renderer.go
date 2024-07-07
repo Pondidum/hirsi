@@ -57,22 +57,22 @@ func (r *ObsidianRenderer) PopulateAutoLinker() error {
 	logPath := path.Join(r.path, "log")
 
 	return filepath.WalkDir(r.path, func(p string, d fs.DirEntry, e error) error {
-		if d.IsDir() {
-			return nil
-		}
 
 		if strings.HasPrefix(d.Name(), ".") {
-			return nil
+			return fs.SkipDir
 		}
 
 		if strings.HasPrefix(p, logPath) {
+			return fs.SkipDir
+		}
+
+		if d.IsDir() {
 			return nil
 		}
 
 		term := strings.TrimSuffix(d.Name(), path.Ext(d.Name()))
 		if _, found := r.terms[term]; !found {
 
-			fmt.Println("add term", term)
 			rx, err := regexp.Compile(`(?i)^(\W*?)(` + term + `)(\W*?)$`)
 			if err != nil {
 				return err
