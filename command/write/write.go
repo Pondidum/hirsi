@@ -15,7 +15,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var tr = otel.Tracer("basic")
+var tr = otel.Tracer("command.writer")
 
 type WriteCommand struct {
 }

@@ -28,7 +28,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var tr = otel.Tracer("import")
+var tr = otel.Tracer("command.import")
 
 type ImportCommand struct {
 }

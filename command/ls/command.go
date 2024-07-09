@@ -15,7 +15,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var tr = otel.Tracer("ls")
+var tr = otel.Tracer("command.ls")
 
 type LsCommand struct {
 }

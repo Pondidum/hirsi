@@ -12,7 +12,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var tr = otel.Tracer("init")
+var tr = otel.Tracer("command.init")
 
 type InitCommand struct {
 }
