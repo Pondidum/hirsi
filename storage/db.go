@@ -101,7 +101,7 @@ func StoreMessage(ctx context.Context, dbPath string, m *message.Message) error 
 	return nil
 }
 
-func ListMessages(ctx context.Context, dbPath string, recentCount int) ([]*message.Message, error) {
+func EachMessage(ctx context.Context, dbPath string, recentCount int, onMessage func(m *message.Message) error) error {
 	ctx, span := tr.Start(ctx, "list_messages")
 	defer span.End()
 
@@ -109,7 +109,7 @@ func ListMessages(ctx context.Context, dbPath string, recentCount int) ([]*messa
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer db.Close()
 
@@ -118,17 +118,21 @@ select log.id, log.stored_at, log.written_at, log.message, json_group_object(tag
 from log inner join tags on log.id = tags.log_id
 group by log.id, log.stored_at, log.written_at, log.message
 order by log.stored_at desc
-limit ?
 `
 
+	parameters := []any{}
+
+	if recentCount > 0 {
+		query += `limit ?`
+		parameters = append(parameters, recentCount)
+	}
+
 	//"select * from log sort by stored_at desc limit ?"
-	rows, err := db.QueryContext(ctx, query, recentCount)
+	rows, err := db.QueryContext(ctx, query, parameters...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rows.Close()
-
-	messages := []*message.Message{}
 
 	for rows.Next() {
 		id := 0
@@ -137,12 +141,29 @@ limit ?
 		tag := &TagReader{Target: map[string]string{}}
 
 		if err := rows.Scan(&id, &m.StoredAt, &m.WrittenAt, &m.Message, &tag); err != nil {
-			return nil, err
+			return err
 		}
 
 		m.Tags = tag.Target
 
+		if err := onMessage(m); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ListMessages(ctx context.Context, dbPath string, recentCount int) ([]*message.Message, error) {
+
+	messages := make([]*message.Message, 0, recentCount)
+
+	err := EachMessage(ctx, dbPath, recentCount, func(m *message.Message) error {
 		messages = append(messages, m)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return messages, nil

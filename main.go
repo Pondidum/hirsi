@@ -6,6 +6,7 @@ import (
 	importcmd "hirsi/command/import"
 	"hirsi/command/initialise"
 	"hirsi/command/ls"
+	"hirsi/command/render"
 	"hirsi/command/write"
 	"os"
 
@@ -19,6 +20,7 @@ func main() {
 		"init":   command.NewCommand(initialise.NewInitCommand()),
 		"ls":     command.NewCommand(ls.NewLsCommand()),
 		"import": command.NewCommand(importcmd.NewImportCommand()),
+		"render": command.NewCommand(render.NewRenderCommand()),
 	}
 
 	cli := &cli.CLI{
