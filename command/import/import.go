@@ -31,11 +31,10 @@ import (
 var tr = otel.Tracer("import")
 
 type ImportCommand struct {
-	config *config.Config
 }
 
-func NewImportCommand(config *config.Config) *ImportCommand {
-	return &ImportCommand{config}
+func NewImportCommand() *ImportCommand {
+	return &ImportCommand{}
 }
 
 func (c *ImportCommand) Synopsis() string {
@@ -127,6 +126,13 @@ func (c *ImportCommand) importFile(ctx context.Context, filepath string) error {
 var rx = regexp.MustCompile(`^- (\d\d):(\d\d) .*`)
 
 func (c *ImportCommand) parseFile(ctx context.Context, dirPath string, filename string, content []byte) error {
+	ctx, span := tr.Start(ctx, "parse_file")
+	defer span.End()
+
+	cfg, err := config.CreateConfig(ctx)
+	if err != nil {
+		return tracing.Error(span, err)
+	}
 
 	fmt.Println("==>", filename)
 	date, err := time.Parse("2006-01-02", strings.TrimSuffix(filename, path.Ext(filename)))
@@ -169,7 +175,7 @@ func (c *ImportCommand) parseFile(ctx context.Context, dirPath string, filename 
 			},
 		}
 
-		for _, e := range c.config.Enhancements {
+		for _, e := range cfg.Enhancements {
 			if err := e.Enhance(message); err != nil {
 				return err
 			}
@@ -177,11 +183,11 @@ func (c *ImportCommand) parseFile(ctx context.Context, dirPath string, filename 
 
 		message.Tags[enhancement.PwdTag] = dirPath
 
-		if err := storage.StoreMessage(ctx, c.config.DbPath, message); err != nil {
+		if err := storage.StoreMessage(ctx, cfg.DbPath, message); err != nil {
 			return err
 		}
 
-		for _, r := range c.config.Renderers {
+		for _, r := range cfg.Renderers {
 			if err := r.Render(message); err != nil {
 				return err
 			}

@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"testing"
 
@@ -12,7 +13,7 @@ func TestConfigParsing(t *testing.T) {
 	content, err := os.ReadFile("test.toml")
 	assert.NoError(t, err)
 
-	cfg, err := Parse(bytes.NewReader(content))
+	cfg, err := Parse(context.Background(), bytes.NewReader(content))
 	assert.NoError(t, err)
 
 	assert.Len(t, cfg.Renderers, 2)

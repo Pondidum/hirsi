@@ -5,20 +5,23 @@ import (
 	"fmt"
 	"hirsi/config"
 	"hirsi/storage"
+	"hirsi/tracing"
 	"strings"
 
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/pflag"
+	"go.opentelemetry.io/otel"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var tr = otel.Tracer("ls")
+
 type LsCommand struct {
-	config *config.Config
 }
 
-func NewLsCommand(config *config.Config) *LsCommand {
-	return &LsCommand{config: config}
+func NewLsCommand() *LsCommand {
+	return &LsCommand{}
 }
 
 func (c *LsCommand) Synopsis() string {
@@ -31,8 +34,15 @@ func (c *LsCommand) Flags() *pflag.FlagSet {
 }
 
 func (c *LsCommand) Execute(ctx context.Context, args []string) error {
+	ctx, span := tr.Start(ctx, "execute")
+	defer span.End()
 
-	messages, err := storage.ListMessages(ctx, c.config.DbPath, 10)
+	cfg, err := config.CreateConfig(ctx)
+	if err != nil {
+		return tracing.Error(span, err)
+	}
+
+	messages, err := storage.ListMessages(ctx, cfg.DbPath, 10)
 	if err != nil {
 		return err
 	}

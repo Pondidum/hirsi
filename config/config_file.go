@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"hirsi/enhancement"
 	"hirsi/renderer"
@@ -18,7 +19,7 @@ type ConfigFile struct {
 	}
 }
 
-func Parse(reader io.Reader) (*Config, error) {
+func Parse(ctx context.Context, reader io.Reader) (*Config, error) {
 	cfg := &ConfigFile{}
 	meta, err := toml.NewDecoder(reader).Decode(&cfg)
 	if err != nil {
@@ -39,7 +40,7 @@ func Parse(reader io.Reader) (*Config, error) {
 			return nil, fmt.Errorf("no renderer factory found for %s", resource.Type)
 		}
 
-		renderer, err := factory(meta, rendererCfg)
+		renderer, err := factory(ctx, meta, rendererCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -95,8 +96,8 @@ func buildSink(allSinks map[string]renderer.Renderer, names []string) renderer.R
 	return renderer.NewCompositeRenderer(sinks)
 }
 
-var rendererFactories = map[string]func(meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error){
-	"obsidian": func(meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error) {
+var rendererFactories = map[string]func(ctx context.Context, meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error){
+	"obsidian": func(ctx context.Context, meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error) {
 
 		cfg := &obsidianConfig{}
 		if err := meta.PrimitiveDecode(p, cfg); err != nil {
@@ -109,11 +110,11 @@ var rendererFactories = map[string]func(meta toml.MetaData, p toml.Primitive) (r
 		}
 
 		r.AddTitles(cfg.Titles)
-		r.PopulateAutoLinker()
+		r.PopulateAutoLinker(ctx)
 
 		return r, nil
 	},
-	"log": func(meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error) {
+	"log": func(ctx context.Context, meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error) {
 
 		cfg := &logConfig{}
 		if err := meta.PrimitiveDecode(p, cfg); err != nil {

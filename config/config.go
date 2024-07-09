@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"hirsi/enhancement"
 	"hirsi/renderer"
 	"os"
@@ -14,12 +15,9 @@ type Config struct {
 	Renderers    []renderer.Renderer
 }
 
-func CreateConfig() (*Config, error) {
-	return createConfigFromEnvironment()
-}
-
-func createConfigFromEnvironment() (*Config, error) {
+func CreateConfig(ctx context.Context) (*Config, error) {
 	filepath := os.Getenv("HIRSI_CONFIG")
+
 	if filepath == "" {
 
 		if xdgData := os.Getenv("XDG_CONFIG_HOME"); xdgData == "" {
@@ -39,7 +37,7 @@ func createConfigFromEnvironment() (*Config, error) {
 		return nil, err
 	}
 
-	cfg, err := Parse(bytes.NewReader(content))
+	cfg, err := Parse(ctx, bytes.NewReader(content))
 	if err != nil {
 		return nil, err
 	}

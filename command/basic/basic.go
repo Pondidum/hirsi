@@ -5,6 +5,7 @@ import (
 	"hirsi/config"
 	"hirsi/message"
 	"hirsi/storage"
+	"hirsi/tracing"
 	"strings"
 	"time"
 
@@ -17,11 +18,10 @@ import (
 var tr = otel.Tracer("basic")
 
 type BasicCommand struct {
-	config *config.Config
 }
 
-func NewBasicCommand(config *config.Config) *BasicCommand {
-	return &BasicCommand{config}
+func NewBasicCommand() *BasicCommand {
+	return &BasicCommand{}
 }
 
 func (c *BasicCommand) Synopsis() string {
@@ -37,23 +37,28 @@ func (c *BasicCommand) Execute(ctx context.Context, args []string) error {
 	ctx, span := tr.Start(ctx, "execute")
 	defer span.End()
 
+	cfg, err := config.CreateConfig(ctx)
+	if err != nil {
+		return tracing.Error(span, err)
+	}
+
 	message := &message.Message{
 		WrittenAt: time.Now(),
 		Message:   strings.Join(args, " "),
 		Tags:      map[string]string{},
 	}
 
-	for _, e := range c.config.Enhancements {
+	for _, e := range cfg.Enhancements {
 		if err := e.Enhance(message); err != nil {
 			return err
 		}
 	}
 
-	if err := storage.StoreMessage(ctx, c.config.DbPath, message); err != nil {
+	if err := storage.StoreMessage(ctx, cfg.DbPath, message); err != nil {
 		return err
 	}
 
-	for _, r := range c.config.Renderers {
+	for _, r := range cfg.Renderers {
 		if err := r.Render(message); err != nil {
 			return err
 		}
