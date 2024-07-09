@@ -13,7 +13,7 @@ import (
 type ConfigFile struct {
 	Renderer map[string]toml.Primitive
 	Filter   map[string]toml.Primitive
-	Pipeline []struct {
+	Pipeline map[string]struct {
 		Filters   []string
 		Renderers []string
 	}
@@ -49,11 +49,12 @@ func Parse(ctx context.Context, reader io.Reader) (*Config, error) {
 	}
 
 	config := &Config{
+		Renderers: map[string]renderer.Renderer{},
 		Enhancements: []enhancement.Enhancement{
 			&enhancement.PwdEnhancement{},
 		},
 	}
-	for _, pipeline := range cfg.Pipeline {
+	for name, pipeline := range cfg.Pipeline {
 
 		sink := buildSink(sinks, pipeline.Renderers)
 
@@ -75,7 +76,7 @@ func Parse(ctx context.Context, reader io.Reader) (*Config, error) {
 			}
 		}
 
-		config.Renderers = append(config.Renderers, sink)
+		config.Renderers[name] = sink
 	}
 
 	return config, nil

@@ -12,7 +12,7 @@ import (
 type Config struct {
 	DbPath       string
 	Enhancements []enhancement.Enhancement
-	Renderers    []renderer.Renderer
+	Renderers    map[string]renderer.Renderer
 }
 
 func CreateConfig(ctx context.Context) (*Config, error) {

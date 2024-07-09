@@ -23,10 +23,10 @@ type = "obsidian"
 path = "/home/andy/dev/projects/hirsi/obsidian-dev/hirsi-dev"
 titles = ["teamcity", "devportal", "codefresh"]
 
-[[pipeline]]
+[pipeline.only-secret]
 filters = ["only-secret"]
 renderers = ["secret-plain", "secret-obsidian"]
 
-[[pipeline]]
+[pipeline.not-secret]
 filters = ["not-secret"]
 renderers = ["plain"]
