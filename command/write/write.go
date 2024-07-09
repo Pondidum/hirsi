@@ -1,4 +1,4 @@
-package basic
+package write
 
 import (
 	"context"
@@ -17,23 +17,23 @@ import (
 
 var tr = otel.Tracer("basic")
 
-type BasicCommand struct {
+type WriteCommand struct {
 }
 
-func NewBasicCommand() *BasicCommand {
-	return &BasicCommand{}
+func NewWriteCommand() *WriteCommand {
+	return &WriteCommand{}
 }
 
-func (c *BasicCommand) Synopsis() string {
+func (c *WriteCommand) Synopsis() string {
 	return "storage a message"
 }
 
-func (c *BasicCommand) Flags() *pflag.FlagSet {
+func (c *WriteCommand) Flags() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("basic", pflag.ContinueOnError)
 	return flags
 }
 
-func (c *BasicCommand) Execute(ctx context.Context, args []string) error {
+func (c *WriteCommand) Execute(ctx context.Context, args []string) error {
 	ctx, span := tr.Start(ctx, "execute")
 	defer span.End()
 
