@@ -2,8 +2,10 @@ package renderer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"hirsi/message"
+	"hirsi/tracing"
 	"io/fs"
 	"os"
 	"path"
@@ -11,7 +13,13 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+
+	"github.com/adrg/frontmatter"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+var tr = otel.Tracer("renderer.obsidian")
 
 type ObsidianRenderer struct {
 	path     string //./obsidian-dev/hirsi-dev
@@ -39,13 +47,7 @@ func NewObsidianRenderer(dirpath string) (*ObsidianRenderer, error) {
 func (r *ObsidianRenderer) AddTitles(titles []string) error {
 
 	for _, title := range titles {
-		if _, found := r.terms[title]; found {
-			continue
-		}
-
-		var err error
-		fmt.Println("add title", title)
-		if r.terms[title], err = regexp.Compile(`(?i)^(\W*?)(` + title + `)(\W*?)$`); err != nil {
+		if err := r.addTerm(title); err != nil {
 			return err
 		}
 	}
@@ -53,16 +55,28 @@ func (r *ObsidianRenderer) AddTitles(titles []string) error {
 	return nil
 }
 
-func (r *ObsidianRenderer) PopulateAutoLinker() error {
+func (r *ObsidianRenderer) PopulateAutoLinker(ctx context.Context) error {
+	ctx, span := tr.Start(ctx, "populate_autolinker")
+	defer span.End()
+
 	logPath := path.Join(r.path, "log")
 
 	return filepath.WalkDir(r.path, func(p string, d fs.DirEntry, e error) error {
+		ctx, span := tr.Start(ctx, "walk")
+		defer span.End()
+
+		span.SetAttributes(
+			attribute.String("path", p),
+			attribute.Bool("is_dir", d.IsDir()),
+		)
 
 		if strings.HasPrefix(d.Name(), ".") {
+			span.SetAttributes(attribute.Bool("skip_dir", true))
 			return fs.SkipDir
 		}
 
 		if strings.HasPrefix(p, logPath) {
+			span.SetAttributes(attribute.Bool("skip_dir", true))
 			return fs.SkipDir
 		}
 
@@ -71,18 +85,46 @@ func (r *ObsidianRenderer) PopulateAutoLinker() error {
 		}
 
 		term := strings.TrimSuffix(d.Name(), path.Ext(d.Name()))
-		if _, found := r.terms[term]; !found {
 
-			rx, err := regexp.Compile(`(?i)^(\W*?)(` + term + `)(\W*?)$`)
-			if err != nil {
-				return err
+		span.SetAttributes(attribute.String("term", term))
+
+		if err := r.addTerm(term); err != nil {
+			return tracing.ErrorCtx(ctx, err)
+		}
+
+		content, err := os.ReadFile(p)
+		if err != nil {
+			return tracing.ErrorCtx(ctx, err)
+		}
+
+		aliases, err := extractAliases(content)
+		if err != nil {
+			return tracing.ErrorCtx(ctx, err)
+		}
+
+		span.SetAttributes(attribute.StringSlice("aliases", aliases))
+
+		for _, alias := range aliases {
+			if err := r.addTerm(alias); err != nil {
+				return tracing.ErrorCtx(ctx, err)
 			}
-			r.terms[term] = rx
-
 		}
 
 		return nil
 	})
+}
+
+func (r *ObsidianRenderer) addTerm(term string) error {
+	if _, found := r.terms[term]; !found {
+
+		rx, err := regexp.Compile(`(?i)^(\W*?)(` + term + `)(\W*?)$`)
+		if err != nil {
+			return err
+		}
+		r.terms[term] = rx
+
+	}
+	return nil
 }
 
 func (r *ObsidianRenderer) Render(message *message.Message) error {
@@ -155,4 +197,18 @@ func (r *ObsidianRenderer) buildTags(tags map[string]string) string {
 	}
 
 	return strings.TrimSpace(sb.String())
+}
+
+func extractAliases(content []byte) ([]string, error) {
+
+	m := &matter{}
+	if _, err := frontmatter.Parse(bytes.NewReader(content), m); err != nil {
+		return nil, err
+	}
+
+	return m.Aliases, nil
+}
+
+type matter struct {
+	Aliases []string
 }
