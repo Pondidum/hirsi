@@ -8,7 +8,7 @@ import (
 func HasTagWithPrefix(tag string, prefix string) func(m *message.Message) bool {
 	return func(m *message.Message) bool {
 		for tag, val := range m.Tags {
-			if tag == "pwd" && strings.HasPrefix(val, "/home/andy/dev/secret") {
+			if tag == "pwd" && strings.HasPrefix(val, prefix) {
 				return true
 			}
 		}
@@ -19,7 +19,7 @@ func HasTagWithPrefix(tag string, prefix string) func(m *message.Message) bool {
 func HasTagWithoutPrefix(tag string, prefix string) func(m *message.Message) bool {
 	return func(m *message.Message) bool {
 		for tag, val := range m.Tags {
-			if tag == "pwd" && !strings.HasPrefix(val, "/home/andy/dev/secret") {
+			if tag == "pwd" && !strings.HasPrefix(val, prefix) {
 				return true
 			}
 		}
