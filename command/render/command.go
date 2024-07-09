@@ -7,6 +7,7 @@ import (
 	"hirsi/renderer"
 	"hirsi/storage"
 	"hirsi/tracing"
+	"slices"
 
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
@@ -17,7 +18,8 @@ import (
 var tr = otel.Tracer("command.render")
 
 type RenderCommand struct {
-	cliOnly bool
+	cliOnly        bool
+	namedRenderers []string
 }
 
 func NewRenderCommand() *RenderCommand {
@@ -32,6 +34,8 @@ func (c *RenderCommand) Flags() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("render", pflag.ContinueOnError)
 
 	flags.BoolVar(&c.cliOnly, "stdout", false, "render to stdout only")
+	flags.StringSliceVar(&c.namedRenderers, "pipelines", []string{}, "only render with the given pipelines")
+
 	return flags
 }
 
@@ -58,7 +62,20 @@ func (c *RenderCommand) Execute(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		sink = renderer.NewCompositeRendererM(cfg.Renderers)
+
+		if len(c.namedRenderers) == 0 {
+			sink = renderer.NewCompositeRendererM(cfg.Renderers)
+		} else {
+			filtered := make([]renderer.Renderer, 0, len(cfg.Renderers))
+			for name, renderer := range cfg.Renderers {
+				if slices.Contains(c.namedRenderers, name) {
+					filtered = append(filtered, renderer)
+				}
+			}
+
+			sink = renderer.NewCompositeRenderer(filtered)
+		}
+
 	}
 
 	err = storage.EachMessage(ctx, cfg.DbPath, 0, func(m *message.Message) error {
