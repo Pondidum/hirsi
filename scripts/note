@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ -x "hirsi" ]; then
+  ./hirsi write "$@"
+else
+  "$XDG_DATA_HOME/hirsi/hirsi" write "$@"
+fi
