@@ -17,12 +17,12 @@ func TestFindConfigFile(t *testing.T) {
 		xdgEnvVar         string
 		localConfig       bool
 		expectedErr       error
-		expectedContent   string
+		expectedPath      string
 	}{
 		{
 			name:              "HIRSI_CONFIG specified, and exists",
 			hirsiConfigEnvVar: "/env/path/hirsi.toml",
-			expectedContent:   "i am from the env var",
+			expectedPath:      "/env/path/hirsi.toml",
 		},
 		{
 			name:              "HIRSI_CONFIG specified, and doesn't exist",
@@ -30,9 +30,9 @@ func TestFindConfigFile(t *testing.T) {
 			expectedErr:       os.ErrNotExist,
 		},
 		{
-			name:            "only XDG specified, and exists",
-			xdgEnvVar:       "/user/home/custom/xdg",
-			expectedContent: "I am from xdg subpath",
+			name:         "only XDG specified, and exists",
+			xdgEnvVar:    "/user/home/custom/xdg",
+			expectedPath: "/user/home/custom/xdg/hirsi/hirsi.toml",
 		},
 		{
 			name:        "only XDG specified, and doesn't exist",
@@ -43,7 +43,7 @@ func TestFindConfigFile(t *testing.T) {
 			name:              "HIRSI_CONFIG specified, and exists, with local config",
 			hirsiConfigEnvVar: "/env/path/hirsi.toml",
 			localConfig:       true,
-			expectedContent:   "i am from the env var",
+			expectedPath:      "/env/path/hirsi.toml",
 		},
 		{
 			name:              "HIRSI_CONFIG specified, and doesn't exist, with local config",
@@ -52,16 +52,16 @@ func TestFindConfigFile(t *testing.T) {
 			expectedErr:       os.ErrNotExist,
 		},
 		{
-			name:            "only XDG specified, and exists, with local config",
-			xdgEnvVar:       "/user/home/custom/xdg",
-			localConfig:     true,
-			expectedContent: "I am from pwd",
+			name:         "only XDG specified, and exists, with local config",
+			xdgEnvVar:    "/user/home/custom/xdg",
+			localConfig:  true,
+			expectedPath: "/src/hirsi.toml",
 		},
 		{
-			name:            "only XDG specified, and doesn't exist, with local config",
-			xdgEnvVar:       "/user/home/custom/no/xdg",
-			localConfig:     true,
-			expectedContent: "I am from pwd",
+			name:         "only XDG specified, and doesn't exist, with local config",
+			xdgEnvVar:    "/user/home/custom/no/xdg",
+			localConfig:  true,
+			expectedPath: "/src/hirsi.toml",
 		},
 	}
 
@@ -86,14 +86,14 @@ func TestFindConfigFile(t *testing.T) {
 				fs["/src/hirsi.toml"] = "I am from pwd"
 			}
 
-			content, err := findConfigFile(env, fs)
+			configPath, err := findConfigFile(env, fs)
 			if tc.expectedErr == nil {
 				assert.NoError(t, err)
 			} else {
 				assert.ErrorIs(t, err, tc.expectedErr)
 			}
 
-			assert.Equal(t, tc.expectedContent, string(content))
+			assert.Equal(t, tc.expectedPath, configPath)
 
 		})
 	}
@@ -101,9 +101,9 @@ func TestFindConfigFile(t *testing.T) {
 
 type testFs map[string]string
 
-func (fs testFs) ReadFile(name string) ([]byte, error) {
-	if content, found := fs[name]; found {
-		return []byte(content), nil
+func (tfs testFs) Stat(name string) (fs.FileInfo, error) {
+	if _, found := tfs[name]; found {
+		return nil, nil //we know our usage is just checking if err!=nil for existence
 	}
 
 	return nil, os.ErrNotExist

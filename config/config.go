@@ -1,7 +1,6 @@
 package config
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"hirsi/enhancement"
@@ -19,29 +18,25 @@ type Config struct {
 
 type MachineFS struct{}
 
-func (fs MachineFS) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name)
-}
-
 func (fs MachineFS) Open(name string) (fs.File, error) {
 	return nil, fmt.Errorf("not implemented")
+}
+
+func (fs MachineFS) Stat(name string) (fs.FileInfo, error) {
+	return os.Stat(name)
 }
 
 func CreateConfig(ctx context.Context) (*Config, error) {
 
 	// note MachineFS is needed as doing `os.DirFS("/")` will return an FS which doesn't work with
 	// absolute paths, which is quite irritating.
-	content, err := findConfigFile(&realEnvironment{}, &MachineFS{})
+	filepath, err := findConfigFile(&realEnvironment{}, &MachineFS{})
 	if err != nil {
 		return nil, err
 	}
 
-	cfg, err := Parse(ctx, bytes.NewReader(content))
+	cfg, err := Parse(ctx, filepath)
 	if err != nil {
-		return nil, err
-	}
-
-	if cfg.DbPath, err = dbPath(); err != nil {
 		return nil, err
 	}
 
@@ -60,36 +55,37 @@ func (r *realEnvironment) GetEnv(key string) string { return os.Getenv(key) }
 func (r *realEnvironment) GetHome() (string, error) { return os.UserHomeDir() }
 func (r *realEnvironment) GetPwd() (string, error)  { return os.Getwd() }
 
-func findConfigFile(env environment, f fs.ReadFileFS) ([]byte, error) {
+func findConfigFile(env environment, f fs.StatFS) (string, error) {
 	filepath := env.GetEnv("HIRSI_CONFIG")
 	if filepath != "" {
-		content, err := f.ReadFile(filepath)
-		if err != nil {
-			return nil, err
+		if _, err := f.Stat(filepath); err != nil {
+			return "", err
 		}
-		return content, nil
+
+		return filepath, nil
 	}
 
 	pwd, err := env.GetPwd()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	if content, err := f.ReadFile(path.Join(pwd, "hirsi.toml")); err == nil {
-		return content, nil
+	filepath = path.Join(pwd, "hirsi.toml")
+	if _, err := f.Stat(filepath); err == nil {
+		return filepath, nil
 	}
 
 	configDir, err := configPath(env)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	filepath = path.Join(configDir, "hirsi/hirsi.toml")
-	content, err := f.ReadFile(filepath)
-	if err != nil {
-		return nil, err
+	if _, err := f.Stat(filepath); err != nil {
+		return "", err
 	}
-	return content, nil
+
+	return filepath, nil
 }
 
 func configPath(env environment) (string, error) {
@@ -104,16 +100,4 @@ func configPath(env environment) (string, error) {
 
 	return path.Join(home, ".config"), nil
 
-}
-
-func dbPath() (string, error) {
-	if xdgData := os.Getenv("XDG_DATA_HOME"); xdgData == "" {
-		return path.Join(xdgData, "hirsi/hirsi.db"), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	return path.Join(home, ".local/share/hirsi/hirsi.db"), nil
 }

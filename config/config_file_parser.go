@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"hirsi/enhancement"
 	"hirsi/renderer"
-	"io"
+	"path"
 
 	"github.com/BurntSushi/toml"
 )
 
 type ConfigFile struct {
+	directoryPath string
+
+	Storage struct {
+		Path string
+	}
+
 	Renderer map[string]toml.Primitive
 	Filter   map[string]toml.Primitive
 	Pipeline map[string]struct {
@@ -19,48 +25,65 @@ type ConfigFile struct {
 	}
 }
 
-func Parse(ctx context.Context, reader io.Reader) (*Config, error) {
-	cfg := &ConfigFile{}
-	meta, err := toml.NewDecoder(reader).Decode(&cfg)
+func (cf *ConfigFile) resolveFile(filepath string) string {
+	if path.IsAbs(filepath) {
+		return filepath
+	}
+
+	return path.Join(cf.directoryPath, filepath)
+}
+
+func Parse(ctx context.Context, filepath string) (*Config, error) {
+
+	cfg := &ConfigFile{
+		directoryPath: path.Dir(filepath),
+	}
+
+	meta, err := toml.DecodeFile(filepath, &cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	sinks := map[string]renderer.Renderer{}
+	renderers, err := parsePipelines(ctx, meta, cfg)
+	if err != nil {
+		return nil, err
+	}
 
-	for name, rendererCfg := range cfg.Renderer {
-
-		resource := &ResourceType{}
-		if err := meta.PrimitiveDecode(rendererCfg, resource); err != nil {
-			return nil, err
-		}
-
-		factory, found := rendererFactories[resource.Type]
-		if !found {
-			return nil, fmt.Errorf("no renderer factory found for %s", resource.Type)
-		}
-
-		renderer, err := factory(ctx, meta, rendererCfg)
-		if err != nil {
-			return nil, err
-		}
-
-		sinks[name] = renderer
+	dbPath := cfg.Storage.Path
+	if !path.IsAbs(dbPath) {
+		dbPath = path.Join(cfg.directoryPath, dbPath)
 	}
 
 	config := &Config{
-		Renderers: map[string]renderer.Renderer{},
+		DbPath:    dbPath,
+		Renderers: renderers,
 		Enhancements: []enhancement.Enhancement{
 			&enhancement.PwdEnhancement{},
 		},
 	}
+
+	return config, nil
+}
+
+func parsePipelines(ctx context.Context, meta toml.MetaData, cfg *ConfigFile) (map[string]renderer.Renderer, error) {
+
+	rendererDefinitions, err := parseRenderers(ctx, meta, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	renderers := make(map[string]renderer.Renderer, len(cfg.Pipeline))
+
 	for name, pipeline := range cfg.Pipeline {
 
-		sink := buildSink(sinks, pipeline.Renderers)
+		sink := buildRenderer(rendererDefinitions, pipeline.Renderers)
 
 		for _, filterName := range pipeline.Filters {
 
-			filter := cfg.Filter[filterName]
+			filter, found := cfg.Filter[filterName]
+			if !found {
+				return nil, fmt.Errorf("no filter called %s found", filterName)
+			}
 			resource := &ResourceType{}
 			if err := meta.PrimitiveDecode(filter, resource); err != nil {
 				return nil, err
@@ -76,14 +99,42 @@ func Parse(ctx context.Context, reader io.Reader) (*Config, error) {
 			}
 		}
 
-		config.Renderers[name] = sink
+		renderers[name] = sink
 	}
 
-	return config, nil
-
+	return renderers, nil
 }
 
-func buildSink(allSinks map[string]renderer.Renderer, names []string) renderer.Renderer {
+func parseRenderers(ctx context.Context, meta toml.MetaData, cfg *ConfigFile) (map[string]renderer.Renderer, error) {
+	renderers := map[string]renderer.Renderer{}
+
+	for name, rendererCfg := range cfg.Renderer {
+
+		resource := &ResourceType{}
+		if err := meta.PrimitiveDecode(rendererCfg, resource); err != nil {
+			return nil, err
+		}
+
+		factory, found := rendererFactories[resource.Type]
+		if !found {
+			return nil, fmt.Errorf("no renderer factory found for %s", resource.Type)
+		}
+
+		renderer, err := factory(ctx, cfg, func(target any) error {
+			return meta.PrimitiveDecode(rendererCfg, target)
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		renderers[name] = renderer
+	}
+
+	return renderers, nil
+}
+
+func buildRenderer(allSinks map[string]renderer.Renderer, names []string) renderer.Renderer {
 
 	if len(names) == 1 {
 		return allSinks[names[0]]
@@ -97,33 +148,37 @@ func buildSink(allSinks map[string]renderer.Renderer, names []string) renderer.R
 	return renderer.NewCompositeRenderer(sinks)
 }
 
-var rendererFactories = map[string]func(ctx context.Context, meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error){
-	"obsidian": func(ctx context.Context, meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error) {
+func obsidianFactory(ctx context.Context, cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error) {
 
-		cfg := &obsidianConfig{}
-		if err := meta.PrimitiveDecode(p, cfg); err != nil {
-			return nil, err
-		}
+	c := &obsidianConfig{}
+	if err := decode(c); err != nil {
+		return nil, err
+	}
 
-		r, err := renderer.NewObsidianRenderer(cfg.Path)
-		if err != nil {
-			return nil, err
-		}
+	r, err := renderer.NewObsidianRenderer(cfg.resolveFile(c.Path))
+	if err != nil {
+		return nil, err
+	}
 
-		r.AddTitles(cfg.Titles)
-		r.PopulateAutoLinker(ctx)
+	r.AddTitles(c.Titles)
+	r.PopulateAutoLinker(ctx)
 
-		return r, nil
-	},
-	"log": func(ctx context.Context, meta toml.MetaData, p toml.Primitive) (renderer.Renderer, error) {
+	return r, nil
+}
 
-		cfg := &logConfig{}
-		if err := meta.PrimitiveDecode(p, cfg); err != nil {
-			return nil, err
-		}
+func logFactory(ctx context.Context, cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error) {
 
-		return renderer.NewLogRenderer(cfg.Path)
-	},
+	c := &logConfig{}
+	if err := decode(c); err != nil {
+		return nil, err
+	}
+
+	return renderer.NewLogRenderer(cfg.resolveFile(c.Path))
+}
+
+var rendererFactories = map[string]func(ctx context.Context, cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error){
+	"obsidian": obsidianFactory,
+	"log":      logFactory,
 }
 
 var filterFactories = map[string]func(meta toml.MetaData, p toml.Primitive, sink renderer.Renderer) (renderer.Renderer, error){
@@ -172,9 +227,3 @@ type tagFilterConfig struct {
 	Tag    string
 	Prefix string
 }
-
-// type RendererConfig struct {
-// 	Name string
-// 	Type string
-
-// }

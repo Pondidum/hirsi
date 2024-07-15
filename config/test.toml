@@ -1,3 +1,5 @@
+[storage]
+path = "relative/file.db"
 
 [filter.only-secret]
 type = "tag-with-prefix"

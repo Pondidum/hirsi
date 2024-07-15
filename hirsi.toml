@@ -1,0 +1,18 @@
+[storage]
+path = "dev.db"
+
+# [renderer.plain]
+# type = "log"
+# path = "/home/andy/log"
+
+# [renderer.secret-plain]
+# type = "log"
+# path = "/home/andy/dev/secret/log-plain"
+
+[renderer.obsidian]
+type = "obsidian"
+path = "obsidian-dev/hirsi-dev"
+titles = ["gha"]
+
+[pipeline.default]
+renderers = ["obsidian"]
