@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -130,6 +131,11 @@ func (c *ImportCommand) parseFile(ctx context.Context, dirPath string, filename 
 	defer span.End()
 
 	cfg, err := config.CreateConfig(ctx)
+	if err != nil {
+		return tracing.Error(span, err)
+	}
+
+	dirPath, err = filepath.Abs(dirPath)
 	if err != nil {
 		return tracing.Error(span, err)
 	}
