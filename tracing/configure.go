@@ -22,13 +22,14 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
-const OtlpEndpointEnvVar = "OTEL_EXPORTER_OTLP_ENDPOINT"
-const OtlpTracesEndpointEnvVar = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
-const OtlpHeadersEnvVar = "OTEL_EXPORTER_OTLP_HEADERS"
-const OtelTraceExporterEnvVar = "OTEL_TRACE_EXPORTER"
+type TraceConfiguration struct {
+	Endpoint string
+	Headers  map[string]string
+	Exporter string
+}
 
-func Configure(ctx context.Context, appName string, version string) (func(ctx context.Context) error, error) {
-	exporter, err := createExporter(ctx)
+func Configure(ctx context.Context, cfg *TraceConfiguration, appName string, version string) (func(ctx context.Context) error, error) {
+	exporter, err := createExporter(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -86,10 +87,12 @@ func parseOtelEnvironmentHeaders(fromEnv string) (map[string]string, error) {
 	return headers, nil
 }
 
-func createExporter(ctx context.Context) (sdktrace.SpanExporter, error) {
+func createExporter(ctx context.Context, cfg *TraceConfiguration) (sdktrace.SpanExporter, error) {
 
-	exporterType := os.Getenv(OtelTraceExporterEnvVar)
-	switch exporterType {
+	switch cfg.Exporter {
+	case "none":
+		return nil, nil
+
 	case "stdout":
 		return stdouttrace.New(stdouttrace.WithPrettyPrint())
 
@@ -98,10 +101,8 @@ func createExporter(ctx context.Context) (sdktrace.SpanExporter, error) {
 	}
 
 	endpoint := "localhost:4317"
-	if val := os.Getenv(OtlpTracesEndpointEnvVar); val != "" {
-		endpoint = val
-	} else if val := os.Getenv(OtlpEndpointEnvVar); val != "" {
-		endpoint = val
+	if cfg.Endpoint != "" {
+		endpoint = cfg.Endpoint
 	}
 
 	u, err := url.Parse(endpoint)
@@ -132,11 +133,7 @@ func createExporter(ctx context.Context) (sdktrace.SpanExporter, error) {
 			opts = append(opts, otlphttp.WithInsecure())
 		}
 
-		headers, err := parseOtelEnvironmentHeaders(os.Getenv(OtlpHeadersEnvVar))
-		if err != nil {
-			return nil, err
-		}
-		opts = append(opts, otlphttp.WithHeaders(headers))
+		opts = append(opts, otlphttp.WithHeaders(cfg.Headers))
 
 		return otlphttp.New(ctx, opts...)
 	} else {
@@ -153,11 +150,7 @@ func createExporter(ctx context.Context) (sdktrace.SpanExporter, error) {
 			opts = append(opts, otlpgrpc.WithInsecure())
 		}
 
-		headers, err := parseOtelEnvironmentHeaders(os.Getenv(OtlpHeadersEnvVar))
-		if err != nil {
-			return nil, err
-		}
-		opts = append(opts, otlpgrpc.WithHeaders(headers))
+		opts = append(opts, otlpgrpc.WithHeaders(cfg.Headers))
 
 		return otlpgrpc.New(ctx, opts...)
 	}

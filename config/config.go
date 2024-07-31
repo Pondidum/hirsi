@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hirsi/enhancement"
 	"hirsi/renderer"
+	"hirsi/tracing"
 	"io/fs"
 	"os"
 	"path"
@@ -12,6 +13,7 @@ import (
 
 type Config struct {
 	DbPath       string
+	Tracing      *tracing.TraceConfiguration
 	Enhancements []enhancement.Enhancement
 	Renderers    map[string]renderer.Renderer
 }

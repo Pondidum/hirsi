@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hirsi/enhancement"
 	"hirsi/renderer"
+	"hirsi/tracing"
 	"path"
 
 	"github.com/BurntSushi/toml"
@@ -13,6 +14,7 @@ import (
 type ConfigFile struct {
 	directoryPath string
 
+	Tracing *tracing.TraceConfiguration
 	Storage struct {
 		Path string
 	}
@@ -56,6 +58,7 @@ func Parse(ctx context.Context, filepath string) (*Config, error) {
 
 	config := &Config{
 		DbPath:    dbPath,
+		Tracing:   cfg.Tracing,
 		Renderers: renderers,
 		Enhancements: []enhancement.Enhancement{
 			&enhancement.PwdEnhancement{},

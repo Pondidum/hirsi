@@ -51,7 +51,7 @@ func (c *command) Run(args []string) int {
 		return 1
 	}
 
-	shutdown, err := tracing.Configure(ctx, "hirsi", "0.0.1")
+	shutdown, err := tracing.Configure(ctx, cfg.Tracing, "hirsi", "0.0.1")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1

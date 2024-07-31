@@ -1,3 +1,6 @@
+[tracing]
+exporter = "otlp"
+
 [storage]
 path = "dev.db"
 
