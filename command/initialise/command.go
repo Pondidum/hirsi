@@ -4,7 +4,6 @@ import (
 	"context"
 	"hirsi/config"
 	"hirsi/storage"
-	"hirsi/tracing"
 
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
@@ -30,14 +29,9 @@ func (c *InitCommand) Flags() *pflag.FlagSet {
 	return flags
 }
 
-func (c *InitCommand) Execute(ctx context.Context, args []string) error {
+func (c *InitCommand) Execute(ctx context.Context, cfg *config.Config, args []string) error {
 	ctx, span := tr.Start(ctx, "execute")
 	defer span.End()
-
-	cfg, err := config.CreateConfig(ctx)
-	if err != nil {
-		return tracing.Error(span, err)
-	}
 
 	if err := storage.MigrateDatabase(ctx, cfg.DbPath); err != nil {
 		return err

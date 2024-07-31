@@ -5,7 +5,6 @@ import (
 	"hirsi/config"
 	"hirsi/message"
 	"hirsi/storage"
-	"hirsi/tracing"
 	"strings"
 	"time"
 
@@ -33,14 +32,9 @@ func (c *WriteCommand) Flags() *pflag.FlagSet {
 	return flags
 }
 
-func (c *WriteCommand) Execute(ctx context.Context, args []string) error {
+func (c *WriteCommand) Execute(ctx context.Context, cfg *config.Config, args []string) error {
 	ctx, span := tr.Start(ctx, "execute")
 	defer span.End()
-
-	cfg, err := config.CreateConfig(ctx)
-	if err != nil {
-		return tracing.Error(span, err)
-	}
 
 	message := &message.Message{
 		WrittenAt: time.Now(),

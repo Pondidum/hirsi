@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"hirsi/config"
 	"hirsi/tracing"
 	"os"
 	"strings"
@@ -15,7 +16,7 @@ import (
 type CommandDefinition interface {
 	Synopsis() string
 	Flags() *pflag.FlagSet
-	Execute(ctx context.Context, args []string) error
+	Execute(ctx context.Context, cfg *config.Config, args []string) error
 }
 
 func NewCommand(definition CommandDefinition) func() (cli.Command, error) {
@@ -43,6 +44,13 @@ func (c *command) Help() string {
 
 func (c *command) Run(args []string) int {
 	ctx := context.Background()
+
+	cfg, err := config.CreateConfig(ctx)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+
 	shutdown, err := tracing.Configure(ctx, "hirsi", "0.0.1")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -61,7 +69,7 @@ func (c *command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.Execute(ctx, flags.Args()); err != nil {
+	if err := c.Execute(ctx, cfg, flags.Args()); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}

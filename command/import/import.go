@@ -47,7 +47,7 @@ func (c *ImportCommand) Flags() *pflag.FlagSet {
 	return flags
 }
 
-func (c *ImportCommand) Execute(ctx context.Context, args []string) error {
+func (c *ImportCommand) Execute(ctx context.Context, cfg *config.Config, args []string) error {
 	ctx, span := tr.Start(ctx, "execute")
 	defer span.End()
 
@@ -61,11 +61,11 @@ func (c *ImportCommand) Execute(ctx context.Context, args []string) error {
 	}
 
 	if stats.IsDir() {
-		if err := c.importDir(ctx, args[0]); err != nil {
+		if err := c.importDir(ctx, cfg, args[0]); err != nil {
 			return err
 		}
 	} else {
-		if err := c.importFile(ctx, args[0]); err != nil {
+		if err := c.importFile(ctx, cfg, args[0]); err != nil {
 			return err
 		}
 	}
@@ -73,7 +73,7 @@ func (c *ImportCommand) Execute(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (c *ImportCommand) importDir(ctx context.Context, dirpath string) error {
+func (c *ImportCommand) importDir(ctx context.Context, cfg *config.Config, dirpath string) error {
 	source := os.DirFS(dirpath)
 
 	entries, err := fs.ReadDir(source, ".")
@@ -99,7 +99,7 @@ func (c *ImportCommand) importDir(ctx context.Context, dirpath string) error {
 			return tracing.ErrorCtx(ctx, err)
 		}
 
-		if err := c.parseFile(ctx, dirpath, filename, content); err != nil {
+		if err := c.parseFile(ctx, cfg, dirpath, filename, content); err != nil {
 			return err
 		}
 	}
@@ -107,7 +107,7 @@ func (c *ImportCommand) importDir(ctx context.Context, dirpath string) error {
 	return nil
 }
 
-func (c *ImportCommand) importFile(ctx context.Context, filepath string) error {
+func (c *ImportCommand) importFile(ctx context.Context, cfg *config.Config, filepath string) error {
 
 	content, err := os.ReadFile(filepath)
 	if err != nil {
@@ -117,7 +117,7 @@ func (c *ImportCommand) importFile(ctx context.Context, filepath string) error {
 	dirpath := path.Dir(filepath)
 	filename := path.Base(filepath)
 
-	if err := c.parseFile(ctx, dirpath, filename, content); err != nil {
+	if err := c.parseFile(ctx, cfg, dirpath, filename, content); err != nil {
 		return err
 	}
 
@@ -126,16 +126,11 @@ func (c *ImportCommand) importFile(ctx context.Context, filepath string) error {
 
 var rx = regexp.MustCompile(`^- (\d\d):(\d\d) .*`)
 
-func (c *ImportCommand) parseFile(ctx context.Context, dirPath string, filename string, content []byte) error {
+func (c *ImportCommand) parseFile(ctx context.Context, cfg *config.Config, dirPath string, filename string, content []byte) error {
 	ctx, span := tr.Start(ctx, "parse_file")
 	defer span.End()
 
-	cfg, err := config.CreateConfig(ctx)
-	if err != nil {
-		return tracing.Error(span, err)
-	}
-
-	dirPath, err = filepath.Abs(dirPath)
+	dirPath, err := filepath.Abs(dirPath)
 	if err != nil {
 		return tracing.Error(span, err)
 	}

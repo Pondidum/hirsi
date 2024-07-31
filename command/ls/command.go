@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hirsi/config"
 	"hirsi/storage"
-	"hirsi/tracing"
 	"strings"
 
 	"github.com/ryanuber/columnize"
@@ -33,14 +32,9 @@ func (c *LsCommand) Flags() *pflag.FlagSet {
 	return flags
 }
 
-func (c *LsCommand) Execute(ctx context.Context, args []string) error {
+func (c *LsCommand) Execute(ctx context.Context, cfg *config.Config, args []string) error {
 	ctx, span := tr.Start(ctx, "execute")
 	defer span.End()
-
-	cfg, err := config.CreateConfig(ctx)
-	if err != nil {
-		return tracing.Error(span, err)
-	}
 
 	messages, err := storage.ListMessages(ctx, cfg.DbPath, 10)
 	if err != nil {
