@@ -2,7 +2,6 @@ package renderer
 
 import (
 	"hirsi/message"
-	"sync"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -29,9 +28,6 @@ func NewCompositeRenderer(renderers []Renderer) *CompositeRenderer {
 }
 
 func (r *CompositeRenderer) Render(message *message.Message) error {
-	wg := sync.WaitGroup{}
-	wg.Add(len(r.renderers))
-
 	g := errgroup.Group{}
 
 	for _, r := range r.renderers {
