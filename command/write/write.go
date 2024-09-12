@@ -2,9 +2,12 @@ package write
 
 import (
 	"context"
+	"fmt"
 	"hirsi/config"
 	"hirsi/message"
 	"hirsi/storage"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -24,7 +27,7 @@ func NewWriteCommand() *WriteCommand {
 }
 
 func (c *WriteCommand) Synopsis() string {
-	return "storage a message"
+	return "write a message to the log"
 }
 
 func (c *WriteCommand) Flags() *pflag.FlagSet {
@@ -36,9 +39,20 @@ func (c *WriteCommand) Execute(ctx context.Context, cfg *config.Config, args []s
 	ctx, span := tr.Start(ctx, "execute")
 	defer span.End()
 
+	content := strings.Join(args, " ")
+
+	if len(args) == 0 {
+		note, err := c.launchVim(ctx)
+		if err != nil {
+			return err
+		}
+
+		content = note
+	}
+
 	message := &message.Message{
 		WrittenAt: time.Now(),
-		Message:   strings.Join(args, " "),
+		Message:   content,
 		Tags:      map[string]string{},
 	}
 
@@ -59,4 +73,31 @@ func (c *WriteCommand) Execute(ctx context.Context, cfg *config.Config, args []s
 	}
 
 	return nil
+}
+
+func (c *WriteCommand) launchVim(ctx context.Context) (string, error) {
+	tmp, err := os.CreateTemp("", "hirsi")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close() // so that vim writes it!
+
+	cmd := exec.CommandContext(ctx, "vim", "+normal G$", "+startinsert", tmp.Name())
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+
+	content, err := os.ReadFile(tmp.Name())
+	if err != nil {
+		return "", err
+	}
+
+	if len(content) == 0 {
+		return "", fmt.Errorf("file was empty, aborting")
+	}
+
+	return string(content), nil
 }
