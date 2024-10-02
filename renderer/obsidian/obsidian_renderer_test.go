@@ -1,4 +1,4 @@
-package renderer
+package obsidian
 
 import (
 	"os"
@@ -24,7 +24,7 @@ func TestObsidianLinkin(t *testing.T) {
 
 func TestExtractFrontMatter(t *testing.T) {
 
-	content, err := os.ReadFile("../obsidian-dev/hirsi-dev/devportal.md")
+	content, err := os.ReadFile("../../obsidian-dev/hirsi-dev/devportal.md")
 	assert.NoError(t, err)
 
 	aliases, err := extractAliases(content)

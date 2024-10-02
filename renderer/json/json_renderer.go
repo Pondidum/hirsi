@@ -1,4 +1,4 @@
-package renderer
+package json
 
 import (
 	"encoding/json"

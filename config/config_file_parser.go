@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"hirsi/enhancement"
 	"hirsi/renderer"
+	"hirsi/renderer/log"
+	"hirsi/renderer/obsidian"
 	"hirsi/tracing"
 	"path"
 
@@ -158,7 +160,7 @@ func obsidianFactory(ctx context.Context, cfg *ConfigFile, decode func(target an
 		return nil, err
 	}
 
-	r, err := renderer.NewObsidianRenderer(cfg.resolveFile(c.Path))
+	r, err := obsidian.NewObsidianRenderer(cfg.resolveFile(c.Path))
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +178,7 @@ func logFactory(ctx context.Context, cfg *ConfigFile, decode func(target any) er
 		return nil, err
 	}
 
-	return renderer.NewLogRenderer(cfg.resolveFile(c.Path))
+	return log.NewLogRenderer(cfg.resolveFile(c.Path))
 }
 
 var rendererFactories = map[string]func(ctx context.Context, cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error){
