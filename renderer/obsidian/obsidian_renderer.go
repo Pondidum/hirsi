@@ -156,19 +156,19 @@ func (r *ObsidianRenderer) formatMessage(m *message.Message) []byte {
 
 	buf := bytes.Buffer{}
 	r.template.Execute(&buf, map[string]any{
-		"Message":   r.linkify(m.Message),
+		"Message":   linkify(r.terms, m.Message),
 		"WrittenAt": m.WrittenAt,
-		"Tags":      r.buildTags(m.Tags),
+		"Tags":      buildTags(m.Tags),
 	})
 
 	return buf.Bytes()
 }
 
-func (r *ObsidianRenderer) linkify(message string) string {
+func linkify(terms map[string]*regexp.Regexp, message string) string {
 
 	words := strings.Split(message, " ")
 	for i, word := range words {
-		for term, rx := range r.terms {
+		for term, rx := range terms {
 
 			if word == term {
 				words[i] = "[[" + word + "]]"
@@ -183,7 +183,7 @@ func (r *ObsidianRenderer) linkify(message string) string {
 	return strings.Join(words, " ")
 }
 
-func (r *ObsidianRenderer) buildTags(tags map[string]string) string {
+func buildTags(tags map[string]string) string {
 	sb := strings.Builder{}
 
 	for key, value := range tags {

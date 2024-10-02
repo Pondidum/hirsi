@@ -16,7 +16,7 @@ func TestObsidianLinkin(t *testing.T) {
 
 	r.AddTitles([]string{"teamcity"})
 
-	actual := r.linkify(input)
+	actual := linkify(r.terms, input)
 
 	expected := "- 10:45 [[TEAMCITY]]: [[teamcity]] build for proxy - [https://teamcity.example.com/project.html?projectId=someproject&tab=projectOverview](https://teamcity.example.com/project.html?projectId=someproject&tab=projectOverview)"
 	assert.Equal(t, expected, actual)
