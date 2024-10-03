@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"text/template"
 
 	"github.com/adrg/frontmatter"
 	"go.opentelemetry.io/otel"
@@ -22,24 +21,15 @@ import (
 var tr = otel.Tracer("renderer.obsidian")
 
 type ObsidianRenderer struct {
-	path     string //./obsidian-dev/hirsi-dev
-	template *template.Template
+	path string //./obsidian-dev/hirsi-dev
 
 	terms map[string]*regexp.Regexp
 }
 
 func NewObsidianRenderer(dirpath string) (*ObsidianRenderer, error) {
-	tpl, err := template.New("").Parse(`- {{ .WrittenAt.Format "15:04" }} {{ .Tags }}
-	{{ .Message }}
-`)
-	if err != nil {
-		return nil, err
-	}
-
 	renderer := &ObsidianRenderer{
-		terms:    map[string]*regexp.Regexp{},
-		path:     dirpath,
-		template: tpl,
+		terms: map[string]*regexp.Regexp{},
+		path:  dirpath,
 	}
 	return renderer, nil
 }
@@ -47,7 +37,7 @@ func NewObsidianRenderer(dirpath string) (*ObsidianRenderer, error) {
 func (r *ObsidianRenderer) AddTitles(titles []string) error {
 
 	for _, title := range titles {
-		if err := r.addTerm(title); err != nil {
+		if err := addTerm(r.terms, title); err != nil {
 			return err
 		}
 	}
@@ -88,7 +78,7 @@ func (r *ObsidianRenderer) PopulateAutoLinker(ctx context.Context) error {
 
 		span.SetAttributes(attribute.String("term", term))
 
-		if err := r.addTerm(term); err != nil {
+		if err := addTerm(r.terms, term); err != nil {
 			return tracing.ErrorCtx(ctx, err)
 		}
 
@@ -105,7 +95,7 @@ func (r *ObsidianRenderer) PopulateAutoLinker(ctx context.Context) error {
 		span.SetAttributes(attribute.StringSlice("aliases", aliases))
 
 		for _, alias := range aliases {
-			if err := r.addTerm(alias); err != nil {
+			if err := addTerm(r.terms, alias); err != nil {
 				return tracing.ErrorCtx(ctx, err)
 			}
 		}
@@ -114,14 +104,14 @@ func (r *ObsidianRenderer) PopulateAutoLinker(ctx context.Context) error {
 	})
 }
 
-func (r *ObsidianRenderer) addTerm(term string) error {
-	if _, found := r.terms[term]; !found {
+func addTerm(terms map[string]*regexp.Regexp, term string) error {
+	if _, found := terms[term]; !found {
 
 		rx, err := regexp.Compile(`(?i)^(\W*?)(` + term + `)(\W*?)$`)
 		if err != nil {
 			return err
 		}
-		r.terms[term] = rx
+		terms[term] = rx
 
 	}
 	return nil
@@ -143,7 +133,7 @@ func (r *ObsidianRenderer) Render(message *message.Message) error {
 	}
 	defer f.Close()
 
-	content := r.formatMessage(message)
+	content := formatMessage(r.terms, message)
 	if _, err := f.Write(content); err != nil {
 		return err
 	}
@@ -151,17 +141,23 @@ func (r *ObsidianRenderer) Render(message *message.Message) error {
 	return nil
 }
 
-func (r *ObsidianRenderer) formatMessage(m *message.Message) []byte {
-	// nested tags for each entry, i.e. `path=/home/andy/dev` would be `#path/home/andy/dev`
+func formatMessage(terms map[string]*regexp.Regexp, m *message.Message) []byte {
 
-	buf := bytes.Buffer{}
-	r.template.Execute(&buf, map[string]any{
-		"Message":   linkify(r.terms, m.Message),
-		"WrittenAt": m.WrittenAt,
-		"Tags":      buildTags(m.Tags),
-	})
+	sb := strings.Builder{}
+	sb.WriteString("- ")
+	sb.WriteString(m.WrittenAt.Format("15:04"))
+	sb.WriteString(" ")
+	sb.WriteString(buildTags(m.Tags))
+	sb.WriteString("\n")
 
-	return buf.Bytes()
+	lines := strings.Split(linkify(terms, m.Message), "\n")
+	for _, line := range lines {
+		sb.WriteString("\t")
+		sb.WriteString(line)
+		sb.WriteString("\n")
+	}
+
+	return []byte(sb.String())
 }
 
 func linkify(terms map[string]*regexp.Regexp, message string) string {
