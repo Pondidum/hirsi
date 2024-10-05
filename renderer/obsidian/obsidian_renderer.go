@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/adrg/frontmatter"
@@ -23,12 +22,14 @@ var tr = otel.Tracer("renderer.obsidian")
 type ObsidianRenderer struct {
 	path string //./obsidian-dev/hirsi-dev
 
-	terms map[string]*regexp.Regexp
+	// terms map[string]*regexp.Regexp
+
+	terms []*Term
 }
 
 func NewObsidianRenderer(dirpath string) (*ObsidianRenderer, error) {
 	renderer := &ObsidianRenderer{
-		terms: map[string]*regexp.Regexp{},
+		terms: []*Term{},
 		path:  dirpath,
 	}
 	return renderer, nil
@@ -37,9 +38,12 @@ func NewObsidianRenderer(dirpath string) (*ObsidianRenderer, error) {
 func (r *ObsidianRenderer) AddTitles(titles []string) error {
 
 	for _, title := range titles {
-		if err := addTerm(r.terms, title); err != nil {
+		term, err := NewTerm(title, "")
+		if err != nil {
 			return err
 		}
+
+		r.terms = append(r.terms, term)
 	}
 
 	return nil
@@ -74,13 +78,15 @@ func (r *ObsidianRenderer) PopulateAutoLinker(ctx context.Context) error {
 			return nil
 		}
 
-		term := strings.TrimSuffix(d.Name(), path.Ext(d.Name()))
+		name := strings.TrimSuffix(d.Name(), path.Ext(d.Name()))
 
-		span.SetAttributes(attribute.String("term", term))
+		span.SetAttributes(attribute.String("term", name))
 
-		if err := addTerm(r.terms, term); err != nil {
+		term, err := NewTerm(name, p)
+		if err != nil {
 			return tracing.ErrorCtx(ctx, err)
 		}
+		r.terms = append(r.terms, term)
 
 		content, err := os.ReadFile(p)
 		if err != nil {
@@ -95,26 +101,16 @@ func (r *ObsidianRenderer) PopulateAutoLinker(ctx context.Context) error {
 		span.SetAttributes(attribute.StringSlice("aliases", aliases))
 
 		for _, alias := range aliases {
-			if err := addTerm(r.terms, alias); err != nil {
+
+			term, err := NewTerm(alias, p)
+			if err != nil {
 				return tracing.ErrorCtx(ctx, err)
 			}
+			r.terms = append(r.terms, term)
 		}
 
 		return nil
 	})
-}
-
-func addTerm(terms map[string]*regexp.Regexp, term string) error {
-	if _, found := terms[term]; !found {
-
-		rx, err := regexp.Compile(`(?i)^(\W*?)(` + term + `)(\W*?)$`)
-		if err != nil {
-			return err
-		}
-		terms[term] = rx
-
-	}
-	return nil
 }
 
 func (r *ObsidianRenderer) Render(message *message.Message) error {
@@ -141,7 +137,7 @@ func (r *ObsidianRenderer) Render(message *message.Message) error {
 	return nil
 }
 
-func formatMessage(terms map[string]*regexp.Regexp, m *message.Message) []byte {
+func formatMessage(terms []*Term, m *message.Message) []byte {
 
 	sb := strings.Builder{}
 	sb.WriteString("- ")
@@ -158,25 +154,6 @@ func formatMessage(terms map[string]*regexp.Regexp, m *message.Message) []byte {
 	}
 
 	return []byte(sb.String())
-}
-
-func linkify(terms map[string]*regexp.Regexp, message string) string {
-
-	words := strings.Split(message, " ")
-	for i, word := range words {
-		for term, rx := range terms {
-
-			if word == term {
-				words[i] = "[[" + word + "]]"
-				continue
-			} else if rx.MatchString(word) {
-				words[i] = rx.ReplaceAllString(word, "$1[[$2]]$3")
-				continue
-			}
-		}
-	}
-
-	return strings.Join(words, " ")
 }
 
 func buildTags(tags map[string]string) string {

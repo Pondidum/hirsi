@@ -4,25 +4,11 @@ import (
 	"hirsi/enhancement"
 	"hirsi/message"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func TestObsidianLinkin(t *testing.T) {
-
-	input := `- 10:45 TEAMCITY: teamcity build for proxy - [https://teamcity.example.com/project.html?projectId=someproject&tab=projectOverview](https://teamcity.example.com/project.html?projectId=someproject&tab=projectOverview)`
-
-	terms := map[string]*regexp.Regexp{}
-	addTerm(terms, "teamcity")
-
-	actual := linkify(terms, input)
-
-	expected := "- 10:45 [[TEAMCITY]]: [[teamcity]] build for proxy - [https://teamcity.example.com/project.html?projectId=someproject&tab=projectOverview](https://teamcity.example.com/project.html?projectId=someproject&tab=projectOverview)"
-	assert.Equal(t, expected, actual)
-}
 
 func TestExtractFrontMatter(t *testing.T) {
 
@@ -59,8 +45,10 @@ func TestFormatMessage(t *testing.T) {
 		},
 	}
 
-	terms := map[string]*regexp.Regexp{}
-	addTerm(terms, "teamcity")
+	teamcity, _ := NewTerm("teamcity", "")
+	terms := []*Term{
+		teamcity,
+	}
 
 	for _, tc := range cases {
 		t.Run(tc.message, func(t *testing.T) {
