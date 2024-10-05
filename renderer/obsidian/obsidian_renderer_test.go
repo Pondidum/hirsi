@@ -1,6 +1,7 @@
 package obsidian
 
 import (
+	"context"
 	"hirsi/enhancement"
 	"hirsi/message"
 	"os"
@@ -18,6 +19,31 @@ func TestExtractFrontMatter(t *testing.T) {
 	aliases, err := extractAliases(content)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"devportal-src"}, aliases)
+}
+
+func TestPopulatingLinker(t *testing.T) {
+	renderer, err := NewObsidianRenderer("../../obsidian-dev/hirsi-dev")
+	assert.NoError(t, err)
+	assert.NotNil(t, renderer)
+
+	renderer.PopulateAutoLinker(context.Background())
+	assert.NotEmpty(t, renderer.terms)
+
+	var duplicates []*Term
+	var aliased *Term
+	for _, term := range renderer.terms {
+		if term.Name == "duplicate" {
+			duplicates = append(duplicates, term)
+		}
+
+		if term.Name == "other-name" {
+			aliased = term
+		}
+	}
+	assert.Len(t, duplicates, 2)
+
+	assert.NotNil(t, aliased)
+	assert.Equal(t, "projects/big-project/duplicate", duplicates[0].Path)
 }
 
 func TestFormatMessage(t *testing.T) {

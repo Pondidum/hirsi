@@ -78,11 +78,18 @@ func (r *ObsidianRenderer) PopulateAutoLinker(ctx context.Context) error {
 			return nil
 		}
 
-		name := strings.TrimSuffix(d.Name(), path.Ext(d.Name()))
-
+		ext := path.Ext(d.Name())
+		name := strings.TrimSuffix(d.Name(), ext)
 		span.SetAttributes(attribute.String("term", name))
 
-		term, err := NewTerm(name, p)
+		projectPath, err := filepath.Rel(r.path, p)
+		if err != nil {
+			return tracing.ErrorCtx(ctx, err)
+		}
+
+		projectPath = strings.TrimSuffix(projectPath, ext)
+
+		term, err := NewTerm(name, projectPath)
 		if err != nil {
 			return tracing.ErrorCtx(ctx, err)
 		}
@@ -102,7 +109,7 @@ func (r *ObsidianRenderer) PopulateAutoLinker(ctx context.Context) error {
 
 		for _, alias := range aliases {
 
-			term, err := NewTerm(alias, p)
+			term, err := NewTerm(alias, projectPath)
 			if err != nil {
 				return tracing.ErrorCtx(ctx, err)
 			}
