@@ -1,6 +1,8 @@
 package obsidian
 
 import (
+	"fmt"
+	"path"
 	"regexp"
 	"strings"
 )
@@ -25,13 +27,19 @@ func NewTerm(name string, path string) (*Term, error) {
 }
 
 func (t *Term) Linkify(word string) (string, bool) {
+	prefix := ""
+	if filename := path.Base(t.Path); !strings.EqualFold(filename, word) {
+		prefix = t.Path + "|"
+	}
 
 	if word == t.Name {
-		return "[[" + word + "]]", true
+		return "[[" + prefix + word + "]]", true
 	}
 
 	if t.regex.MatchString(word) {
-		return t.regex.ReplaceAllString(word, "$1[[$2]]$3"), true
+		groups := t.regex.FindStringSubmatch(word)
+
+		return fmt.Sprintf("%s[[%s%s]]%s", groups[1], prefix, groups[2], groups[3]), true
 	}
 
 	return word, false
