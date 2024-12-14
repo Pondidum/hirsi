@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -79,6 +80,8 @@ func (r *LogRenderer) buildTags(t map[string]string) string {
 			tags = append(tags, fmt.Sprintf("#%s", key))
 		}
 	}
+
+	sort.Strings(tags)
 
 	return strings.Join(tags, " ")
 }
