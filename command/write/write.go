@@ -42,7 +42,7 @@ func (c *WriteCommand) Execute(ctx context.Context, cfg *config.Config, args []s
 	content := strings.Join(args, " ")
 
 	if len(args) == 0 {
-		note, err := c.launchVim(ctx)
+		note, err := c.launchEditor(ctx)
 		if err != nil {
 			return err
 		}
@@ -75,19 +75,38 @@ func (c *WriteCommand) Execute(ctx context.Context, cfg *config.Config, args []s
 	return nil
 }
 
-func (c *WriteCommand) launchVim(ctx context.Context) (string, error) {
+func (c *WriteCommand) launchEditor(ctx context.Context) (string, error) {
 	tmp, err := os.CreateTemp("", "hirsi")
 	if err != nil {
 		return "", err
 	}
-	tmp.Close() // so that vim writes it!
+	tmp.Close() // so that the editor writes it!
 
-	cmd := exec.CommandContext(ctx, "vim", "+normal G$", "+startinsert", tmp.Name())
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", err
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vim"
+	}
+
+	switch strings.ToLower(editor) {
+	case "hx":
+		cmd := exec.CommandContext(ctx, "hx", tmp.Name())
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return "", err
+		}
+
+	case "vim":
+	default:
+		cmd := exec.CommandContext(ctx, "vim", "+normal G$", "+startinsert", tmp.Name())
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return "", err
+		}
+
 	}
 
 	content, err := os.ReadFile(tmp.Name())
