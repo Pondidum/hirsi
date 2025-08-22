@@ -2,12 +2,11 @@ package config
 
 import (
 	"context"
-	"fmt"
 	"hirsi/enhancement"
+	"hirsi/message"
 	"hirsi/renderer"
 	"hirsi/tracing"
 	"io/fs"
-	"os"
 	"path"
 )
 
@@ -18,15 +17,6 @@ type Config struct {
 	Renderers    map[string]renderer.Renderer
 }
 
-type MachineFS struct{}
-
-func (fs MachineFS) Open(name string) (fs.File, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-func (fs MachineFS) Stat(name string) (fs.FileInfo, error) {
-	return os.Stat(name)
-}
 
 func CreateConfig(ctx context.Context) (*Config, error) {
 
@@ -44,18 +34,6 @@ func CreateConfig(ctx context.Context) (*Config, error) {
 
 	return cfg, nil
 }
-
-type environment interface {
-	GetEnv(key string) string
-	GetHome() (string, error)
-	GetPwd() (string, error)
-}
-
-type realEnvironment struct{}
-
-func (r *realEnvironment) GetEnv(key string) string { return os.Getenv(key) }
-func (r *realEnvironment) GetHome() (string, error) { return os.UserHomeDir() }
-func (r *realEnvironment) GetPwd() (string, error)  { return os.Getwd() }
 
 func findConfigFile(env environment, f fs.StatFS) (string, error) {
 	filepath := env.GetEnv("HIRSI_CONFIG")
