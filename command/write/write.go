@@ -66,8 +66,8 @@ func (c *WriteCommand) Execute(ctx context.Context, cfg *config.Config, args []s
 		return err
 	}
 
-	for _, r := range cfg.Renderers {
-		if err := r.Render(message); err != nil {
+	for _, r := range cfg.Pipelines {
+		if err := r.Handle(message); err != nil {
 			return err
 		}
 	}

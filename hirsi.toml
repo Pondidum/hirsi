@@ -4,18 +4,13 @@ exporter = "otlp"
 [storage]
 path = "dev.db"
 
-# [renderer.plain]
-# type = "log"
-# path = "/home/andy/log"
+[[enhancement]]
+type = "pwd"
 
-# [renderer.secret-plain]
-# type = "log"
-# path = "/home/andy/dev/secret/log-plain"
+[[pipe]]
+name = "default"
 
-[renderer.obsidian]
+[[pipe.renderer]]
 type = "obsidian"
 path = "obsidian-dev/hirsi-dev"
 titles = ["gha"]
-
-[pipeline.default]
-renderers = ["obsidian"]

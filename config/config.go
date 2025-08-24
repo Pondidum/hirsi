@@ -1,10 +1,8 @@
 package config
 
 import (
-	"context"
 	"hirsi/enhancement"
-	"hirsi/message"
-	"hirsi/renderer"
+	"hirsi/pipeline"
 	"hirsi/tracing"
 	"io/fs"
 	"path"
@@ -14,11 +12,10 @@ type Config struct {
 	DbPath       string
 	Tracing      *tracing.TraceConfiguration
 	Enhancements []enhancement.Enhancement
-	Renderers    map[string]renderer.Renderer
+	Pipelines    []*pipeline.Pipeline
 }
 
-
-func CreateConfig(ctx context.Context) (*Config, error) {
+func CreateConfig() (*Config, error) {
 
 	// note MachineFS is needed as doing `os.DirFS("/")` will return an FS which doesn't work with
 	// absolute paths, which is quite irritating.
@@ -27,7 +24,7 @@ func CreateConfig(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 
-	cfg, err := Parse(ctx, filepath)
+	cfg, err := Parse(filepath)
 	if err != nil {
 		return nil, err
 	}

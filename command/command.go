@@ -45,7 +45,7 @@ func (c *command) Help() string {
 func (c *command) Run(args []string) int {
 	ctx := context.Background()
 
-	cfg, err := config.CreateConfig(ctx)
+	cfg, err := config.CreateConfig()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1

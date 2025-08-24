@@ -1,34 +1,44 @@
 [storage]
 path = "relative/file.db"
 
-[filter.only-secret]
+
+[[enhancement]]
+type = "pwd"
+
+# [[enhancement]]
+# type = "conditional-tag"
+# condition = "pwd ~= /projects/secret"
+# add = [ "hidden" ]
+# remove= ["other"]
+
+
+
+[[pipe]]
+name = "only-secret"
+
+[[pipe.filter]]
 type = "tag-with-prefix"
 tag = "pwd"
 prefix = "/home/andy/dev/secret"
 
-[filter.not-secret]
+[[pipe.renderer]]
+type = "log"
+path = "/home/andy/dev/secret/log-plain"
+
+
+[[pipe]]
+name = "not-secret"
+
+[[pipe.filter]]
 type = "tag-without-prefix"
 tag = "pwd"
 prefix = "/home/andy/dev/secret"
 
-
-[renderer.plain]
+[[pipe.renderer]]
 type = "log"
 path = "/home/andy/log"
 
-[renderer.secret-plain]
-type = "log"
-path = "/home/andy/dev/secret/log-plain"
-
-[renderer.secret-obsidian]
+[[pipe.renderer]]
 type = "obsidian"
 path = "/home/andy/dev/projects/hirsi/obsidian-dev/hirsi-dev"
-titles = ["teamcity", "devportal", "codefresh"]
-
-[pipeline.only-secret]
-filters = ["only-secret"]
-renderers = ["secret-plain", "secret-obsidian"]
-
-[pipeline.not-secret]
-filters = ["not-secret"]
-renderers = ["plain"]
+titles = ["teamcity", "portal", "things"]

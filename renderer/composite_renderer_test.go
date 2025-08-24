@@ -23,7 +23,7 @@ func TestCompositeRenderer(t *testing.T) {
 
 	for _, r := range renderers {
 		mr := r.(*MemoryRenderer)
-		assert.Len(t, mr.messages, 1)
-		assert.Equal(t, "the message", mr.messages[0].Message)
+		assert.Len(t, mr.Messages, 1)
+		assert.Equal(t, "the message", mr.Messages[0].Message)
 	}
 }

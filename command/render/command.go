@@ -4,8 +4,10 @@ import (
 	"context"
 	"hirsi/config"
 	"hirsi/message"
+	"hirsi/pipeline"
 	"hirsi/renderer"
 	"hirsi/storage"
+	"hirsi/tracing"
 	"slices"
 
 	"github.com/spf13/pflag"
@@ -18,7 +20,7 @@ var tr = otel.Tracer("command.render")
 
 type RenderCommand struct {
 	cliOnly        bool
-	namedRenderers []string
+	namedPipelines []string
 }
 
 func NewRenderCommand() *RenderCommand {
@@ -33,7 +35,7 @@ func (c *RenderCommand) Flags() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("render", pflag.ContinueOnError)
 
 	flags.BoolVar(&c.cliOnly, "stdout", false, "render to stdout only")
-	flags.StringSliceVar(&c.namedRenderers, "pipelines", []string{}, "only render with the given pipelines")
+	flags.StringSliceVar(&c.namedPipelines, "pipelines", []string{}, "only render with the given pipelines")
 
 	return flags
 }
@@ -42,42 +44,41 @@ func (c *RenderCommand) Execute(ctx context.Context, cfg *config.Config, args []
 	ctx, span := tr.Start(ctx, "execute")
 	defer span.End()
 
-	var sink renderer.Renderer
-
 	if c.cliOnly {
 
 		r, err := renderer.NewCliRenderer()
 		if err != nil {
-			return err
+			return tracing.Error(span, err)
 		}
-		sink = r
-	} else {
-		cfg, err := config.CreateConfig(ctx)
-		if err != nil {
-			return err
-		}
-
-		if len(c.namedRenderers) == 0 {
-			sink = renderer.NewCompositeRendererM(cfg.Renderers)
-		} else {
-			filtered := make([]renderer.Renderer, 0, len(cfg.Renderers))
-			for name, renderer := range cfg.Renderers {
-				if slices.Contains(c.namedRenderers, name) {
-					filtered = append(filtered, renderer)
-				}
-			}
-
-			sink = renderer.NewCompositeRenderer(filtered)
-		}
+		return storage.EachMessage(ctx, cfg.DbPath, 0, func(m *message.Message) error {
+			return r.Render(m)
+		})
 
 	}
 
-	err := storage.EachMessage(ctx, cfg.DbPath, 0, func(m *message.Message) error {
-		return sink.Render(m)
-	})
+	cfg, err := config.CreateConfig()
 	if err != nil {
 		return err
 	}
 
-	return nil
+	pipelines := cfg.Pipelines
+
+	if len(c.namedPipelines) > 0 {
+
+		pipelines = make([]*pipeline.Pipeline, 0, len(c.namedPipelines))
+		for _, pipeline := range cfg.Pipelines {
+			if slices.Contains(c.namedPipelines, pipeline.Name) {
+				pipelines = append(pipelines, pipeline)
+			}
+		}
+	}
+
+	return storage.EachMessage(ctx, cfg.DbPath, 0, func(m *message.Message) error {
+		for _, pipe := range pipelines {
+			if err := pipe.Handle(m); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

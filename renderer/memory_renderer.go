@@ -3,10 +3,10 @@ package renderer
 import "hirsi/message"
 
 type MemoryRenderer struct {
-	messages []*message.Message
+	Messages []*message.Message
 }
 
 func (r *MemoryRenderer) Render(message *message.Message) error {
-	r.messages = append(r.messages, message)
+	r.Messages = append(r.Messages, message)
 	return nil
 }

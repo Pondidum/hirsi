@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"hirsi/enhancement"
+	"hirsi/filter"
+	"hirsi/pipeline"
 	"hirsi/renderer"
 	"hirsi/renderer/log"
 	"hirsi/renderer/obsidian"
@@ -21,214 +23,191 @@ type ConfigFile struct {
 		Path string
 	}
 
-	Renderer map[string]toml.Primitive
-	Filter   map[string]toml.Primitive
-	Pipeline map[string]struct {
-		Filters   []string
-		Renderers []string
-	}
+	Enhancements []toml.Primitive `toml:"enhancement"`
+	Pipelines    []PipelineConfig `toml:"pipe"`
 }
 
-func (cf *ConfigFile) resolveFile(filepath string) string {
-	if path.IsAbs(filepath) {
-		return filepath
-	}
-
-	return path.Join(cf.directoryPath, filepath)
-}
-
-func Parse(ctx context.Context, filepath string) (*Config, error) {
-
-	cfg := &ConfigFile{
-		directoryPath: path.Dir(filepath),
-	}
-
-	meta, err := toml.DecodeFile(filepath, &cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	renderers, err := parsePipelines(ctx, meta, cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	dbPath := cfg.Storage.Path
-	if !path.IsAbs(dbPath) {
-		dbPath = path.Join(cfg.directoryPath, dbPath)
-	}
-
-	config := &Config{
-		DbPath:    dbPath,
-		Tracing:   cfg.Tracing,
-		Renderers: renderers,
-		Enhancements: []enhancement.Enhancement{
-			&enhancement.PwdEnhancement{},
-		},
-	}
-
-	return config, nil
-}
-
-func parsePipelines(ctx context.Context, meta toml.MetaData, cfg *ConfigFile) (map[string]renderer.Renderer, error) {
-
-	rendererDefinitions, err := parseRenderers(ctx, meta, cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	renderers := make(map[string]renderer.Renderer, len(cfg.Pipeline))
-
-	for name, pipeline := range cfg.Pipeline {
-
-		sink := buildRenderer(rendererDefinitions, pipeline.Renderers)
-
-		for _, filterName := range pipeline.Filters {
-
-			filter, found := cfg.Filter[filterName]
-			if !found {
-				return nil, fmt.Errorf("no filter called %s found", filterName)
-			}
-			resource := &ResourceType{}
-			if err := meta.PrimitiveDecode(filter, resource); err != nil {
-				return nil, err
-			}
-
-			factory, found := filterFactories[resource.Type]
-			if !found {
-				return nil, fmt.Errorf("no filter type called %s found", resource.Type)
-			}
-
-			if sink, err = factory(meta, filter, sink); err != nil {
-				return nil, err
-			}
-		}
-
-		renderers[name] = sink
-	}
-
-	return renderers, nil
-}
-
-func parseRenderers(ctx context.Context, meta toml.MetaData, cfg *ConfigFile) (map[string]renderer.Renderer, error) {
-	renderers := map[string]renderer.Renderer{}
-
-	for name, rendererCfg := range cfg.Renderer {
-
-		resource := &ResourceType{}
-		if err := meta.PrimitiveDecode(rendererCfg, resource); err != nil {
-			return nil, err
-		}
-
-		factory, found := rendererFactories[resource.Type]
-		if !found {
-			return nil, fmt.Errorf("no renderer factory found for %s", resource.Type)
-		}
-
-		renderer, err := factory(ctx, cfg, func(target any) error {
-			return meta.PrimitiveDecode(rendererCfg, target)
-		})
-
-		if err != nil {
-			return nil, err
-		}
-
-		renderers[name] = renderer
-	}
-
-	return renderers, nil
-}
-
-func buildRenderer(allSinks map[string]renderer.Renderer, names []string) renderer.Renderer {
-
-	if len(names) == 1 {
-		return allSinks[names[0]]
-	}
-
-	sinks := make([]renderer.Renderer, len(names))
-	for i, name := range names {
-		sinks[i] = allSinks[name]
-	}
-
-	return renderer.NewCompositeRenderer(sinks)
-}
-
-func obsidianFactory(ctx context.Context, cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error) {
-
-	c := &obsidianConfig{}
-	if err := decode(c); err != nil {
-		return nil, err
-	}
-
-	r, err := obsidian.NewObsidianRenderer(cfg.resolveFile(c.Path))
-	if err != nil {
-		return nil, err
-	}
-
-	r.AddTitles(c.Titles)
-	r.PopulateAutoLinker(ctx)
-
-	return r, nil
-}
-
-func logFactory(ctx context.Context, cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error) {
-
-	c := &logConfig{}
-	if err := decode(c); err != nil {
-		return nil, err
-	}
-
-	return log.NewLogRenderer(cfg.resolveFile(c.Path))
-}
-
-var rendererFactories = map[string]func(ctx context.Context, cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error){
-	"obsidian": obsidianFactory,
-	"log":      logFactory,
-}
-
-var filterFactories = map[string]func(meta toml.MetaData, p toml.Primitive, sink renderer.Renderer) (renderer.Renderer, error){
-	"tag-with-prefix": func(meta toml.MetaData, p toml.Primitive, sink renderer.Renderer) (renderer.Renderer, error) {
-
-		cfg := &tagFilterConfig{}
-		if err := meta.PrimitiveDecode(p, cfg); err != nil {
-			return nil, err
-		}
-
-		filter := renderer.HasTagWithPrefix(cfg.Tag, cfg.Prefix)
-
-		return renderer.NewFilteredRenderer(filter, sink), nil
-	},
-	"tag-without-prefix": func(meta toml.MetaData, p toml.Primitive, sink renderer.Renderer) (renderer.Renderer, error) {
-
-		cfg := &tagFilterConfig{}
-		if err := meta.PrimitiveDecode(p, cfg); err != nil {
-			return nil, err
-		}
-
-		filter := renderer.HasTagWithoutPrefix(cfg.Tag, cfg.Prefix)
-
-		return renderer.NewFilteredRenderer(filter, sink), nil
-	},
+type PipelineConfig struct {
+	Name      string
+	Filters   []toml.Primitive `toml:"filter"`
+	Renderers []toml.Primitive `toml:"renderer"`
 }
 
 type ResourceType struct {
 	Type string
 }
 
-type obsidianConfig struct {
-	ResourceType
+func Parse(filepath string) (*Config, error) {
 
-	Path   string
-	Titles []string
+	cf := &ConfigFile{
+		directoryPath: path.Dir(filepath),
+	}
+
+	meta, err := toml.DecodeFile(filepath, &cf)
+	if err != nil {
+		return nil, err
+	}
+
+	enhancements, err := parseEnhancements(cf, meta)
+	if err != nil {
+		return nil, err
+	}
+
+	pipelines := make([]*pipeline.Pipeline, len(cf.Pipelines))
+	for i, pipeline := range cf.Pipelines {
+		if pipelines[i], err = parsePipeline(cf, meta, pipeline); err != nil {
+			return nil, err
+		}
+	}
+
+	dbPath := cf.Storage.Path
+	if !path.IsAbs(dbPath) {
+		dbPath = path.Join(cf.directoryPath, dbPath)
+	}
+
+	config := &Config{
+		DbPath:       dbPath,
+		Tracing:      cf.Tracing,
+		Enhancements: enhancements,
+		Pipelines:    pipelines,
+	}
+
+	return config, nil
 }
 
-type logConfig struct {
-	ResourceType
-
-	Path string
+var enhancementFactories = map[string]func() enhancement.Enhancement{
+	"pwd": func() enhancement.Enhancement { return &enhancement.PwdEnhancement{} },
 }
 
-type tagFilterConfig struct {
-	Tag    string
-	Prefix string
+var filterFactories = map[string]func(decode func(target any) error) (filter.Filter, error){
+	"tag-with-prefix": func(decode func(target any) error) (filter.Filter, error) {
+		conf := struct {
+			Tag    string
+			Prefix string
+		}{}
+		if err := decode(&conf); err != nil {
+			return nil, err
+		}
+		return filter.HasTagWithPrefix(conf.Tag, conf.Prefix), nil
+	},
+	"tag-without-prefix": func(decode func(target any) error) (filter.Filter, error) {
+		conf := struct {
+			Tag    string
+			Prefix string
+		}{}
+		if err := decode(&conf); err != nil {
+			return nil, err
+		}
+		return filter.HasTagWithoutPrefix(conf.Tag, conf.Prefix), nil
+	},
+}
+
+func parseEnhancements(cf *ConfigFile, meta toml.MetaData) ([]enhancement.Enhancement, error) {
+	enhancements := make([]enhancement.Enhancement, len(cf.Enhancements))
+
+	for i, ec := range cf.Enhancements {
+		resource := &ResourceType{}
+		if err := meta.PrimitiveDecode(ec, resource); err != nil {
+			return nil, err
+		}
+		factory, found := enhancementFactories[resource.Type]
+		if !found {
+			return nil, fmt.Errorf("no enhancement of type '%s' found", resource.Type)
+		}
+
+		enhancements[i] = factory()
+	}
+
+	return enhancements, nil
+}
+func parsePipeline(cf *ConfigFile, meta toml.MetaData, pc PipelineConfig) (*pipeline.Pipeline, error) {
+	p := pipeline.NewPipeline(pc.Name)
+
+	for _, fc := range pc.Filters {
+		resource := &ResourceType{}
+		if err := meta.PrimitiveDecode(fc, resource); err != nil {
+			return nil, err
+		}
+		factory, found := filterFactories[resource.Type]
+		if !found {
+			return nil, fmt.Errorf("no filter of type '%s' found", resource.Type)
+		}
+
+		filter, err := factory(func(target any) error { return meta.PrimitiveDecode(fc, target) })
+		if err != nil {
+			return nil, err
+		}
+
+		p.AddFilters(filter)
+	}
+
+	renderers := make([]renderer.Renderer, len(pc.Renderers))
+	for i, rc := range pc.Renderers {
+		resource := &ResourceType{}
+		if err := meta.PrimitiveDecode(rc, resource); err != nil {
+			return nil, err
+		}
+		factory, found := rendererFactories[resource.Type]
+		if !found {
+			return nil, fmt.Errorf("no renderer of type '%s' found", resource.Type)
+		}
+
+		renderer, err := factory(cf, func(target any) error { return meta.PrimitiveDecode(rc, target) })
+		if err != nil {
+			return nil, err
+		}
+		renderers[i] = renderer
+	}
+	p.SetRenderers(renderers)
+
+	return p, nil
+}
+
+var rendererFactories = map[string]func(cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error){
+	"obsidian": obsidianFactory,
+	"log":      logFactory,
+}
+
+func obsidianFactory(cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error) {
+
+	c := &struct {
+		ResourceType
+
+		Path   string
+		Titles []string
+	}{}
+	if err := decode(c); err != nil {
+		return nil, err
+	}
+
+	r, err := obsidian.NewObsidianRenderer(resolveFile(cfg, c.Path))
+	if err != nil {
+		return nil, err
+	}
+
+	r.AddTitles(c.Titles)
+	r.PopulateAutoLinker(context.TODO())
+
+	return r, nil
+}
+
+func logFactory(cfg *ConfigFile, decode func(target any) error) (renderer.Renderer, error) {
+
+	c := &struct {
+		ResourceType
+		Path string
+	}{}
+	if err := decode(c); err != nil {
+		return nil, err
+	}
+
+	return log.NewLogRenderer(resolveFile(cfg, c.Path))
+}
+
+func resolveFile(cf *ConfigFile, filepath string) string {
+	if path.IsAbs(filepath) {
+		return filepath
+	}
+
+	return path.Join(cf.directoryPath, filepath)
 }
