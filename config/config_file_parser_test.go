@@ -1,8 +1,10 @@
 package config
 
 import (
+	"hirsi/enhancement"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,15 +18,27 @@ func TestConfigParsing(t *testing.T) {
 
 	first := cfg.Pipelines[0]
 	require.Equal(t, "only-secret", first.Name)
-	// require.Len(t, first.enhancements, 1)
-	// require.Len(t, first.filters, 1)
-	// require.NotNil(t, first.renderers)
-	// require.IsType(t, &log.LogRenderer{}, first.renderers)
 
 	second := cfg.Pipelines[1]
 	require.Equal(t, "not-secret", second.Name)
-	// require.Len(t, second.enhancements, 1)
-	// require.Len(t, second.filters, 1)
-	// require.NotNil(t, second.renderers)
-	// require.IsType(t, &renderer.CompositeRenderer{}, second.renderers)
+}
+
+func TestParsingEnhancements(t *testing.T) {
+	cfg := `
+[[enhancement]]
+type = "tag-add"
+check = "pwd"
+condition = "equals"
+[[enhancement.values]]
+"/home/andy/dev/projects/homelab" = ["homelab"]
+"/home/andy/dev/projects/trace" = ["trace", "otel"]
+	`
+
+	cf := &ConfigFile{}
+	meta, err := toml.Decode(cfg, cf)
+	require.NoError(t, err)
+
+	all, err := parseEnhancements(cf, meta)
+	require.NoError(t, err)
+	require.IsType(t, &enhancement.TagAddEnhancement{}, all[0])
 }

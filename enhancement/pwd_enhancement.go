@@ -7,6 +7,12 @@ import (
 
 const PwdTag = "pwd"
 
+type PwdConfig struct{}
+
+func (ec *PwdConfig) Build() Enhancement {
+	return &PwdEnhancement{}
+}
+
 type PwdEnhancement struct{}
 
 func (e *PwdEnhancement) Enhance(message *message.Message) error {

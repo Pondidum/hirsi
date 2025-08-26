@@ -75,10 +75,6 @@ func Parse(filepath string) (*Config, error) {
 	return config, nil
 }
 
-var enhancementFactories = map[string]func() enhancement.Enhancement{
-	"pwd": func() enhancement.Enhancement { return &enhancement.PwdEnhancement{} },
-}
-
 var filterFactories = map[string]func(decode func(target any) error) (filter.Filter, error){
 	"tag-with-prefix": func(decode func(target any) error) (filter.Filter, error) {
 		conf := struct {
@@ -106,20 +102,26 @@ func parseEnhancements(cf *ConfigFile, meta toml.MetaData) ([]enhancement.Enhanc
 	enhancements := make([]enhancement.Enhancement, len(cf.Enhancements))
 
 	for i, ec := range cf.Enhancements {
-		resource := &ResourceType{}
-		if err := meta.PrimitiveDecode(ec, resource); err != nil {
+		r := &ResourceType{}
+		if err := meta.PrimitiveDecode(ec, r); err != nil {
 			return nil, err
 		}
-		factory, found := enhancementFactories[resource.Type]
+
+		builder, found := enhancement.GetBuilder(r.Type)
 		if !found {
-			return nil, fmt.Errorf("no enhancement of type '%s' found", resource.Type)
+			return nil, fmt.Errorf("no enhancement type called '%s' found", r.Type)
 		}
 
-		enhancements[i] = factory()
+		if err := meta.PrimitiveDecode(ec, builder); err != nil {
+			return nil, err
+		}
+
+		enhancements[i] = builder.Build()
 	}
 
 	return enhancements, nil
 }
+
 func parsePipeline(cf *ConfigFile, meta toml.MetaData, pc PipelineConfig) (*pipeline.Pipeline, error) {
 	p := pipeline.NewPipeline(pc.Name)
 
