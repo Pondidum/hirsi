@@ -35,6 +35,26 @@ func TestTagAdd(t *testing.T) {
 			tags:      map[string]string{"test": "first", "set": "2"},
 			expected:  map[string]string{"test": "first", "set": "1"},
 		},
+		{
+			condition: "prefix",
+			tags:      map[string]string{},
+			expected:  map[string]string{},
+		},
+		{
+			condition: "prefix",
+			tags:      map[string]string{"test": "first/prefix"},
+			expected:  map[string]string{"test": "first/prefix", "set": "1"},
+		},
+		{
+			condition: "prefix",
+			tags:      map[string]string{"test": "second/prefix"},
+			expected:  map[string]string{"test": "second/prefix", "set": "2"},
+		},
+		{
+			condition: "prefix",
+			tags:      map[string]string{"test": "first/prefix", "set": "2"},
+			expected:  map[string]string{"test": "first/prefix", "set": "1"},
+		},
 	}
 
 	for _, tc := range cases {

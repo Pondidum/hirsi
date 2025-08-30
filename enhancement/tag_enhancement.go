@@ -1,6 +1,9 @@
 package enhancement
 
-import "hirsi/message"
+import (
+	"hirsi/message"
+	"strings"
+)
 
 type TagAddConfig struct {
 	Check     string
@@ -28,6 +31,13 @@ func (e *TagAddEnhancement) Enhance(m *message.Message) error {
 	case "equals":
 		if kvp, found := e.values[val]; found {
 			m.Tags[kvp[0]] = kvp[1]
+		}
+
+	case "prefix":
+		for search, kvp := range e.values {
+			if strings.HasPrefix(val, search) {
+				m.Tags[kvp[0]] = kvp[1]
+			}
 		}
 
 	}
