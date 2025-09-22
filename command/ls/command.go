@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hirsi/config"
+	"hirsi/message"
 	"hirsi/storage"
 	"strings"
 
@@ -52,11 +53,16 @@ func (c *LsCommand) Execute(ctx context.Context, cfg *config.Config, args []stri
 
 	return nil
 }
-func tagsCsv(tags map[string]string) string {
+func tagsCsv(tags []message.Tag) string {
 
 	sb := strings.Builder{}
-	for k, v := range tags {
-		sb.WriteString(fmt.Sprintf("%s=%s,", k, v))
+	for _, tag := range tags {
+		sb.WriteString(tag.Key)
+		if tag.Value != "" {
+			sb.WriteString("=")
+			sb.WriteString(tag.Value)
+		}
+		sb.WriteString(",")
 	}
 
 	return strings.TrimSuffix(sb.String(), ",")

@@ -53,7 +53,7 @@ func (c *WriteCommand) Execute(ctx context.Context, cfg *config.Config, args []s
 	message := &message.Message{
 		WrittenAt: time.Now(),
 		Message:   content,
-		Tags:      map[string]string{},
+		Tags:      []message.Tag{},
 	}
 
 	for _, e := range cfg.Enhancements {

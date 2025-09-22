@@ -50,19 +50,19 @@ func TestFormatMessage(t *testing.T) {
 
 	cases := []struct {
 		message  string
-		tags     map[string]string
+		tags     []message.Tag
 		expected string
 	}{
 		{
 			message: "This is a single line with one tag",
-			tags:    map[string]string{enhancement.PwdTag: "/tmp/test/dir"},
+			tags:    []message.Tag{message.NewTag(enhancement.PwdTag, "/tmp/test/dir")},
 			expected: `- 22:26 #pwd/tmp/test/dir
 	This is a single line with one tag
 `,
 		},
 		{
 			message: "This is multiple\nlines of message.\noh,and one tag",
-			tags:    map[string]string{enhancement.PwdTag: "/tmp/test/dir"},
+			tags:    []message.Tag{message.NewTag(enhancement.PwdTag, "/tmp/test/dir")},
 			expected: `- 22:26 #pwd/tmp/test/dir
 	This is multiple
 	lines of message.

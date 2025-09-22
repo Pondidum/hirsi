@@ -17,9 +17,9 @@ func TestLogRendererMessage(t *testing.T) {
 	m := &message.Message{
 		WrittenAt: time.Date(2024, 06, 26, 14, 3, 37, 0, time.UTC),
 		Message:   "this is a test",
-		Tags: map[string]string{
-			"pwd":  "/home/andy",
-			"type": "test",
+		Tags: []message.Tag{
+			{"pwd", "/home/andy"},
+			{"type", "test"},
 		},
 	}
 

@@ -83,11 +83,11 @@ func StoreMessage(ctx context.Context, dbPath string, m *message.Message) error 
 		return tracing.Error(span, err)
 	}
 
-	for key, value := range m.Tags {
+	for _, tag := range m.Tags {
 
 		_, err := tx.ExecContext(ctx,
 			"insert into tags (log_id, key, value) values (?, ?, ?)",
-			logId, key, value,
+			logId, tag.Key, tag.Value,
 		)
 		if err != nil {
 			return tracing.Error(span, err)
@@ -114,8 +114,14 @@ func EachMessage(ctx context.Context, dbPath string, recentCount int, onMessage 
 	defer db.Close()
 
 	query := `
-select log.id, log.stored_at, log.written_at, log.message, json_group_object(tags.key, tags.value) tags
-from log inner join tags on log.id = tags.log_id
+select 
+	log.id,
+	log.stored_at,
+	log.written_at,
+	log.message,
+	json_group_array(json_object('key', tags.key, 'value', tags.value)) tags
+from log
+inner join tags on log.id = tags.log_id
 group by log.id, log.stored_at, log.written_at, log.message
 order by log.stored_at desc
 `
@@ -138,7 +144,7 @@ order by log.stored_at desc
 		id := 0
 		m := &message.Message{}
 
-		tag := &TagReader{Target: map[string]string{}}
+		tag := &TagReader{Target: []message.Tag{}}
 
 		if err := rows.Scan(&id, &m.StoredAt, &m.WrittenAt, &m.Message, &tag); err != nil {
 			return err
@@ -170,7 +176,7 @@ func ListMessages(ctx context.Context, dbPath string, recentCount int) ([]*messa
 }
 
 type TagReader struct {
-	Target map[string]string
+	Target []message.Tag
 }
 
 func (r *TagReader) Scan(src any) error {

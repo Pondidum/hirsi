@@ -12,20 +12,20 @@ func TestHasTagWithPrefix(t *testing.T) {
 
 	matching := &message.Message{
 		Message: "with tag",
-		Tags: map[string]string{
-			enhancement.PwdTag: "/home/andy/dev/secret/project",
+		Tags: []message.Tag{
+			message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/secret/project"},
 		},
 	}
 	nonMatching := &message.Message{
 		Message: "without tag",
-		Tags: map[string]string{
-			enhancement.PwdTag: "/home/andy/dev/projects/hirsi",
+		Tags: []message.Tag{
+			message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/projects/hirsi"},
 		},
 	}
 
 	noTag := &message.Message{
 		Message: "no tags",
-		Tags:    map[string]string{},
+		Tags:    []message.Tag{},
 	}
 
 	assert.True(t, HasTagWithPrefix("pwd", "/home/andy/dev/secret")(matching))
@@ -38,20 +38,20 @@ func TestHasTagWithoutPrefix(t *testing.T) {
 
 	matching := &message.Message{
 		Message: "with tag",
-		Tags: map[string]string{
-			enhancement.PwdTag: "/home/andy/dev/secret/project",
+		Tags: []message.Tag{
+			message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/secret/project"},
 		},
 	}
 	nonMatching := &message.Message{
 		Message: "without tag",
-		Tags: map[string]string{
-			enhancement.PwdTag: "/home/andy/dev/projects/hirsi",
+		Tags: []message.Tag{
+			message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/projects/hirsi"},
 		},
 	}
 
 	noTag := &message.Message{
 		Message: "no tags",
-		Tags:    map[string]string{},
+		Tags:    []message.Tag{},
 	}
 
 	assert.False(t, HasTagWithoutPrefix("pwd", "/home/andy/dev/secret")(matching))

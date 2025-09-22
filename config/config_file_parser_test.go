@@ -62,7 +62,6 @@ func TestLiveConfig(t *testing.T) {
 	message := &message.Message{
 		WrittenAt: time.Now(),
 		Message:   "whaaat",
-		Tags:      map[string]string{},
 	}
 
 	for _, e := range cfg.Enhancements {

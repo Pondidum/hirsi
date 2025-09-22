@@ -163,14 +163,14 @@ func formatMessage(terms []*Term, m *message.Message) []byte {
 	return []byte(sb.String())
 }
 
-func buildTags(tags map[string]string) string {
+func buildTags(tags []message.Tag) string {
 	sb := strings.Builder{}
 
-	for key, value := range tags {
-		sb.WriteString(fmt.Sprintf("#%s", key))
+	for _, tag := range tags {
+		sb.WriteString(fmt.Sprintf("#%s", tag.Key))
 
-		if value != "" {
-			sb.WriteString(fmt.Sprintf("/%s", strings.TrimPrefix(value, "/")))
+		if tag.Value != "" {
+			sb.WriteString(fmt.Sprintf("/%s", strings.TrimPrefix(tag.Value, "/")))
 		}
 
 		sb.WriteString(" ")

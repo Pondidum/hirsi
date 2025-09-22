@@ -16,31 +16,42 @@ func (ec *TagAddConfig) Build() Enhancement {
 }
 
 type TagAddEnhancement struct {
-	field     string
-	condition string
-	values    map[string][]string
+	field        string
+	condition    string
+	replacements map[string][]string
 }
 
 func (e *TagAddEnhancement) Enhance(m *message.Message) error {
-	val, found := m.Tags[e.field]
-	if !found {
-		return nil
-	}
 
-	switch e.condition {
-	case "equals":
-		if kvp, found := e.values[val]; found {
-			m.Tags[kvp[0]] = kvp[1]
-		}
+	for _, tag := range m.Tags {
+		if tag.Key == e.field {
 
-	case "prefix":
-		for search, kvp := range e.values {
-			if strings.HasPrefix(val, search) {
-				m.Tags[kvp[0]] = kvp[1]
+			// note the matching logic can be pre built on construction, rather than per tag
+			switch e.condition {
+			case "equals":
+				if replacement, found := e.replacements[tag.Value]; found {
+					m.Tags = append(m.Tags, buildTag(replacement))
+				}
+
+			case "prefix":
+				for search, replacement := range e.replacements {
+					if strings.HasPrefix(tag.Value, search) {
+						m.Tags = append(m.Tags, buildTag(replacement))
+					}
+				}
+
 			}
-		}
 
+		}
 	}
 
 	return nil
+}
+
+func buildTag(replacement []string) message.Tag {
+	if len(replacement) == 1 {
+		return message.Tag{Key: replacement[0]}
+	}
+
+	return message.Tag{Key: replacement[0], Value: replacement[1]}
 }

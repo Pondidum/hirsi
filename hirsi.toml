@@ -1,11 +1,18 @@
 [tracing]
-exporter = "otlp"
+exporter = "none" #otlp
 
 [storage]
 path = "dev.db"
 
 [[enhancement]]
 type = "pwd"
+
+[[enhancement]]
+type = "tag-add"
+check = "pwd"
+condition = "prefix"
+[enhancement.values]
+"/home/andy/dev/projects/hirsi" = [ "hirsi" ]
 
 [[pipe]]
 name = "default"

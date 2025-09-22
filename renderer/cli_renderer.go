@@ -42,14 +42,14 @@ func (r *CliRenderer) Render(m *message.Message) error {
 	return nil
 }
 
-func (r *CliRenderer) buildTags(t map[string]string) string {
+func (r *CliRenderer) buildTags(t []message.Tag) string {
 	tags := make([]string, 0, len(t))
 
-	for key, value := range t {
-		if value != "" {
-			tags = append(tags, fmt.Sprintf("#%s: %s", key, value))
+	for _, tag := range t {
+		if tag.Value != "" {
+			tags = append(tags, fmt.Sprintf("#%s: %s", tag.Key, tag.Value))
 		} else {
-			tags = append(tags, fmt.Sprintf("#%s", key))
+			tags = append(tags, fmt.Sprintf("#%s", tag.Key))
 		}
 	}
 

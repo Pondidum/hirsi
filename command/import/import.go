@@ -168,28 +168,28 @@ func (c *ImportCommand) parseFile(ctx context.Context, cfg *config.Config, dirPa
 			entryTime = entryTime.Add(time.Duration(seconds) * time.Second)
 		}
 
-		message := &message.Message{
+		msg := &message.Message{
 			WrittenAt: entryTime,
 			Message:   entry[8:],
-			Tags: map[string]string{
-				"imported": "",
+			Tags: []message.Tag{
+				message.Tag{Key: "imported"},
 			},
 		}
 
 		for _, e := range cfg.Enhancements {
-			if err := e.Enhance(message); err != nil {
+			if err := e.Enhance(msg); err != nil {
 				return err
 			}
 		}
 
-		message.Tags[enhancement.PwdTag] = dirPath
+		msg.Tags = append(msg.Tags, message.Tag{Key: enhancement.PwdTag, Value: dirPath})
 
-		if err := storage.StoreMessage(ctx, cfg.DbPath, message); err != nil {
+		if err := storage.StoreMessage(ctx, cfg.DbPath, msg); err != nil {
 			return err
 		}
 
 		for _, r := range cfg.Pipelines {
-			if err := r.Handle(message); err != nil {
+			if err := r.Handle(msg); err != nil {
 				return err
 			}
 		}

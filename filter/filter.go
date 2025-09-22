@@ -12,8 +12,8 @@ var _ Filter = HasTagWithoutPrefix("", "")
 
 func HasTagWithPrefix(tag string, prefix string) func(m *message.Message) bool {
 	return func(m *message.Message) bool {
-		for tag, val := range m.Tags {
-			if tag == "pwd" && strings.HasPrefix(val, prefix) {
+		for _, tag := range m.Tags {
+			if tag.Key == "pwd" && strings.HasPrefix(tag.Value, prefix) {
 				return true
 			}
 		}
@@ -23,8 +23,8 @@ func HasTagWithPrefix(tag string, prefix string) func(m *message.Message) bool {
 
 func HasTagWithoutPrefix(tag string, prefix string) func(m *message.Message) bool {
 	return func(m *message.Message) bool {
-		for tag, val := range m.Tags {
-			if tag == "pwd" && !strings.HasPrefix(val, prefix) {
+		for _, tag := range m.Tags {
+			if tag.Key == "pwd" && !strings.HasPrefix(tag.Value, prefix) {
 				return true
 			}
 		}
