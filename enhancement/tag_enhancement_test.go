@@ -4,8 +4,36 @@ import (
 	"hirsi/message"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTagAddConfig(t *testing.T) {
+	cfg := `
+[[enhancement]]
+type = "tag-add"
+check = "pwd"
+condition = "equals"
+[enhancement.values]
+"/home/andy/dev/projects/homelab" = ["homelab"]
+"/home/andy/dev/projects/trace" = ["trace", "otel"]
+	`
+
+	config := &struct {
+		Enhancement []TagAddConfig
+	}{}
+
+	_, err := toml.Decode(cfg, config)
+	require.NoError(t, err)
+
+	tagAddCfg := config.Enhancement[0]
+	require.Equal(t, "pwd", tagAddCfg.Check)
+	require.Equal(t, "equals", tagAddCfg.Condition)
+	require.Equal(t, map[string][]string{
+		"/home/andy/dev/projects/homelab": []string{"homelab"},
+		"/home/andy/dev/projects/trace":   []string{"trace", "otel"},
+	}, tagAddCfg.Values)
+}
 
 func TestTagAdd(t *testing.T) {
 

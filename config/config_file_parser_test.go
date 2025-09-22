@@ -2,7 +2,10 @@ package config
 
 import (
 	"hirsi/enhancement"
+	"hirsi/message"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/require"
@@ -41,4 +44,28 @@ condition = "equals"
 	all, err := parseEnhancements(cf, meta)
 	require.NoError(t, err)
 	require.IsType(t, &enhancement.TagAddEnhancement{}, all[0])
+}
+
+func TestLiveConfig(t *testing.T) {
+	content, err := os.Open("live.toml")
+	if err == os.ErrNotExist {
+		t.Skip("no live.toml found")
+	}
+	defer content.Close()
+	require.NotEmpty(t, content)
+
+	cfg, err := parse(".", content)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, cfg.Enhancements)
+
+	message := &message.Message{
+		WrittenAt: time.Now(),
+		Message:   "whaaat",
+		Tags:      map[string]string{},
+	}
+
+	for _, e := range cfg.Enhancements {
+		require.NoError(t, e.Enhance(message))
+	}
 }

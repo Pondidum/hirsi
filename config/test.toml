@@ -11,7 +11,14 @@ type = "pwd"
 # add = [ "hidden" ]
 # remove= ["other"]
 
+# [[enhancement]]
+# type = "tag-add"
+# check = "pwd"
+# [[enhancement.values]]
+# "/home/andy/dev/projects/homelab" = ["homelab"]
+# "/home/andy/dev/projects/trace" = ["trace", "otel"]
 
+  
 
 [[pipe]]
 name = "only-secret"

@@ -10,6 +10,8 @@ import (
 	"hirsi/renderer/log"
 	"hirsi/renderer/obsidian"
 	"hirsi/tracing"
+	"io"
+	"os"
 	"path"
 
 	"github.com/BurntSushi/toml"
@@ -38,12 +40,22 @@ type ResourceType struct {
 }
 
 func Parse(filepath string) (*Config, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	return parse(path.Dir(filepath), f)
+}
+
+func parse(dirPath string, content io.Reader) (*Config, error) {
 
 	cf := &ConfigFile{
-		directoryPath: path.Dir(filepath),
+		directoryPath: dirPath,
 	}
 
-	meta, err := toml.DecodeFile(filepath, &cf)
+	meta, err := toml.NewDecoder(content).Decode(&cf)
 	if err != nil {
 		return nil, err
 	}
