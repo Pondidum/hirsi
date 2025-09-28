@@ -48,3 +48,21 @@ func TestTagSet(t *testing.T) {
 	}, tags.tags)
 
 }
+
+func TestTagIteration(t *testing.T) {
+	tags := Tags{}
+	tags.Add("1", "one")
+	tags.Add("2", "two")
+	tags.Add("3", "three")
+
+	seen := map[string]string{}
+	for tag := range tags.All() {
+		seen[tag.Key] = tag.Value
+	}
+
+	require.Equal(t, map[string]string{
+		"1": "one",
+		"2": "two",
+		"3": "three",
+	}, seen)
+}

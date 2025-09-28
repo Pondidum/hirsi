@@ -1,6 +1,6 @@
 module hirsi
 
-go 1.19
+go 1.24.2
 
 require (
 	github.com/gofiber/contrib/otelfiber/v2 v2.0.0-20231206152400-10ad0d2c8754

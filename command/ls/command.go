@@ -6,6 +6,7 @@ import (
 	"hirsi/config"
 	"hirsi/message"
 	"hirsi/storage"
+	"iter"
 	"strings"
 
 	"github.com/ryanuber/columnize"
@@ -46,17 +47,17 @@ func (c *LsCommand) Execute(ctx context.Context, cfg *config.Config, args []stri
 	output[0] = "stored_at | written_at | message | tags"
 
 	for i, m := range messages {
-		output[i+1] = fmt.Sprintf("%s | %s | %s | %s", m.StoredAt, m.WrittenAt, m.Message, tagsCsv(m.Tags))
+		output[i+1] = fmt.Sprintf("%s | %s | %s | %s", m.StoredAt, m.WrittenAt, m.Message, tagsCsv(m.Tags.All()))
 	}
 
 	fmt.Println(tableOutput(output))
 
 	return nil
 }
-func tagsCsv(tags []message.Tag) string {
+func tagsCsv(tags iter.Seq[message.Tag]) string {
 
 	sb := strings.Builder{}
-	for _, tag := range tags {
+	for tag := range tags {
 		sb.WriteString(tag.Key)
 		if tag.Value != "" {
 			sb.WriteString("=")

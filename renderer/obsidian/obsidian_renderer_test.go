@@ -82,7 +82,7 @@ func TestFormatMessage(t *testing.T) {
 			actual := formatMessage(terms, &message.Message{
 				WrittenAt: time.Date(2024, 10, 03, 22, 26, 31, 0, time.UTC),
 				Message:   tc.message,
-				Tags:      tc.tags,
+				Tags:      message.NewTagsFrom(tc.tags),
 			})
 
 			assert.Equal(t, tc.expected, string(actual))

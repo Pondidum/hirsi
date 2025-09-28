@@ -1,7 +1,13 @@
 package message
 
+import "iter"
+
 type Tags struct {
 	tags []Tag
+}
+
+func NewTagsFrom(tags []Tag) *Tags {
+	return &Tags{tags: tags}
 }
 
 func (t *Tags) Set(key string, value string) {
@@ -18,7 +24,21 @@ func (t *Tags) Set(key string, value string) {
 }
 
 func (t *Tags) Add(key string, value string) {
-	t.tags = append(t.tags, NewTag(key, value))
+	t.AddT(NewTag(key, value))
+}
+
+func (t *Tags) AddT(tag Tag) {
+	t.tags = append(t.tags, tag)
+}
+
+func (t *Tags) All() iter.Seq[Tag] {
+	return func(yield func(Tag) bool) {
+		for _, tag := range t.tags {
+			if !yield(tag) {
+				return
+			}
+		}
+	}
 }
 
 type Tag struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hirsi/message"
 	"io"
+	"iter"
 	"os"
 	"path"
 	"sort"
@@ -64,16 +65,16 @@ func (r *LogRenderer) formatMessage(m *message.Message) []byte {
 	r.template.Execute(&buf, map[string]any{
 		"Message":   m.Message,
 		"WrittenAt": m.WrittenAt,
-		"Tags":      r.buildTags(m.Tags),
+		"Tags":      r.buildTags(m.Tags.All()),
 	})
 
 	return buf.Bytes()
 }
 
-func (r *LogRenderer) buildTags(t []message.Tag) string {
-	tags := make([]string, 0, len(t))
+func (r *LogRenderer) buildTags(t iter.Seq[message.Tag]) string {
+	tags := []string{}
 
-	for _, tag := range t {
+	for tag := range t {
 		if tag.Value != "" {
 			tags = append(tags, fmt.Sprintf("#%s: %s", tag.Key, tag.Value))
 		} else {

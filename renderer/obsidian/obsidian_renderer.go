@@ -7,6 +7,7 @@ import (
 	"hirsi/message"
 	"hirsi/tracing"
 	"io/fs"
+	"iter"
 	"os"
 	"path"
 	"path/filepath"
@@ -150,7 +151,7 @@ func formatMessage(terms []*Term, m *message.Message) []byte {
 	sb.WriteString("- ")
 	sb.WriteString(m.WrittenAt.Format("15:04"))
 	sb.WriteString(" ")
-	sb.WriteString(buildTags(m.Tags))
+	sb.WriteString(buildTags(m.Tags.All()))
 	sb.WriteString("\n")
 
 	lines := strings.Split(linkify(terms, m.Message), "\n")
@@ -163,10 +164,10 @@ func formatMessage(terms []*Term, m *message.Message) []byte {
 	return []byte(sb.String())
 }
 
-func buildTags(tags []message.Tag) string {
+func buildTags(tags iter.Seq[message.Tag]) string {
 	sb := strings.Builder{}
 
-	for _, tag := range tags {
+	for tag := range tags {
 		sb.WriteString(fmt.Sprintf("#%s", tag.Key))
 
 		if tag.Value != "" {

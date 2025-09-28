@@ -171,10 +171,9 @@ func (c *ImportCommand) parseFile(ctx context.Context, cfg *config.Config, dirPa
 		msg := &message.Message{
 			WrittenAt: entryTime,
 			Message:   entry[8:],
-			Tags: []message.Tag{
-				message.Tag{Key: "imported"},
-			},
+			Tags:      &message.Tags{},
 		}
+		msg.Tags.Add("imported", "")
 
 		for _, e := range cfg.Enhancements {
 			if err := e.Enhance(msg); err != nil {
@@ -182,7 +181,7 @@ func (c *ImportCommand) parseFile(ctx context.Context, cfg *config.Config, dirPa
 			}
 		}
 
-		msg.Tags = append(msg.Tags, message.Tag{Key: enhancement.PwdTag, Value: dirPath})
+		msg.Tags.Set(enhancement.PwdTag, dirPath)
 
 		if err := storage.StoreMessage(ctx, cfg.DbPath, msg); err != nil {
 			return err

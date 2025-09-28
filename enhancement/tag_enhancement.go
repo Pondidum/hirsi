@@ -23,20 +23,20 @@ type TagAddEnhancement struct {
 
 func (e *TagAddEnhancement) Enhance(m *message.Message) error {
 
-	for _, tag := range m.Tags {
+	for tag := range m.Tags.All() {
 		if tag.Key == e.field {
 
 			// note the matching logic can be pre built on construction, rather than per tag
 			switch e.condition {
 			case "equals":
 				if replacement, found := e.replacements[tag.Value]; found {
-					m.Tags = append(m.Tags, buildTag(replacement))
+					m.Tags.AddT(buildTag(replacement))
 				}
 
 			case "prefix":
 				for search, replacement := range e.replacements {
 					if strings.HasPrefix(tag.Value, search) {
-						m.Tags = append(m.Tags, buildTag(replacement))
+						m.Tags.AddT(buildTag(replacement))
 					}
 				}
 

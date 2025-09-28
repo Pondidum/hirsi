@@ -21,19 +21,7 @@ func (e *PwdEnhancement) Enhance(m *message.Message) error {
 		return err
 	}
 
-	pwdTag := message.Tag{Key: PwdTag, Value: dir}
-
-	// there can be only one pwd tag.
-	for i, tag := range m.Tags {
-		if tag.Key != PwdTag {
-			continue
-		}
-
-		m.Tags[i] = pwdTag
-		return nil
-	}
-
-	m.Tags = append(m.Tags, pwdTag)
+	m.Tags.Set(PwdTag, dir)
 
 	return nil
 }

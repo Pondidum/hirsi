@@ -2,6 +2,7 @@ package enhancement
 
 import (
 	"hirsi/message"
+	"slices"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -96,7 +97,7 @@ func TestTagAdd(t *testing.T) {
 			}
 
 			m := &message.Message{
-				Tags: tc.tags,
+				Tags: message.NewTagsFrom(tc.tags),
 			}
 
 			err := enh.Enhance(m)
@@ -106,7 +107,7 @@ func TestTagAdd(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			require.Equal(t, tc.expected, m.Tags)
+			require.Equal(t, slices.Collect(slices.Values(tc.expected)), slices.Collect(m.Tags.All()))
 		})
 	}
 }

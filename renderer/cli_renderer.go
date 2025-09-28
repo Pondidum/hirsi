@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"hirsi/message"
+	"iter"
 	"strings"
 	"text/template"
 )
@@ -34,7 +35,7 @@ func (r *CliRenderer) Render(m *message.Message) error {
 	r.template.Execute(&buf, map[string]any{
 		"Message":   m.Message,
 		"WrittenAt": m.WrittenAt,
-		"Tags":      r.buildTags(m.Tags),
+		"Tags":      r.buildTags(m.Tags.All()),
 	})
 
 	fmt.Println(buf.String())
@@ -42,10 +43,10 @@ func (r *CliRenderer) Render(m *message.Message) error {
 	return nil
 }
 
-func (r *CliRenderer) buildTags(t []message.Tag) string {
-	tags := make([]string, 0, len(t))
+func (r *CliRenderer) buildTags(t iter.Seq[message.Tag]) string {
+	tags := []string{}
 
-	for _, tag := range t {
+	for tag := range t {
 		if tag.Value != "" {
 			tags = append(tags, fmt.Sprintf("#%s: %s", tag.Key, tag.Value))
 		} else {

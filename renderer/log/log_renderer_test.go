@@ -17,10 +17,10 @@ func TestLogRendererMessage(t *testing.T) {
 	m := &message.Message{
 		WrittenAt: time.Date(2024, 06, 26, 14, 3, 37, 0, time.UTC),
 		Message:   "this is a test",
-		Tags: []message.Tag{
+		Tags: message.NewTagsFrom([]message.Tag{
 			{"pwd", "/home/andy"},
 			{"type", "test"},
-		},
+		}),
 	}
 
 	buf := &bytes.Buffer{}
