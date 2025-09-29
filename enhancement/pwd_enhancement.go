@@ -21,7 +21,7 @@ func (e *PwdEnhancement) Enhance(m *message.Message) error {
 		return err
 	}
 
-	m.Tags.Set(PwdTag, dir)
+	m.SetTag(PwdTag, dir)
 
 	return nil
 }

@@ -83,7 +83,7 @@ func StoreMessage(ctx context.Context, dbPath string, m *message.Message) error 
 		return tracing.Error(span, err)
 	}
 
-	for tag := range m.Tags.All() {
+	for tag := range m.Tags() {
 
 		_, err := tx.ExecContext(ctx,
 			"insert into tags (log_id, key, value) values (?, ?, ?)",
@@ -150,7 +150,7 @@ order by log.stored_at desc
 			return err
 		}
 
-		m.Tags = message.NewTagsFrom(tag.Target)
+		m.AddTags(tag.Target...)
 
 		if err := onMessage(m); err != nil {
 			return err

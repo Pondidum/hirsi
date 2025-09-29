@@ -65,7 +65,7 @@ func (r *LogRenderer) formatMessage(m *message.Message) []byte {
 	r.template.Execute(&buf, map[string]any{
 		"Message":   m.Message,
 		"WrittenAt": m.WrittenAt,
-		"Tags":      r.buildTags(m.Tags.All()),
+		"Tags":      r.buildTags(m.Tags()),
 	})
 
 	return buf.Bytes()

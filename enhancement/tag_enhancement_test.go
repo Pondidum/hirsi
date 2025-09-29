@@ -96,9 +96,8 @@ func TestTagAdd(t *testing.T) {
 				},
 			}
 
-			m := &message.Message{
-				Tags: message.NewTagsFrom(tc.tags),
-			}
+			m := &message.Message{}
+			m.AddTags(tc.tags...)
 
 			err := enh.Enhance(m)
 			if tc.err != nil {
@@ -107,7 +106,7 @@ func TestTagAdd(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			require.Equal(t, slices.Collect(slices.Values(tc.expected)), slices.Collect(m.Tags.All()))
+			require.Equal(t, slices.Collect(slices.Values(tc.expected)), slices.Collect(m.Tags()))
 		})
 	}
 }

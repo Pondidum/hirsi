@@ -7,56 +7,56 @@ import (
 )
 
 func TestTagAdd(t *testing.T) {
-	tags := Tags{}
+	message := Message{}
 
-	tags.Add("key", "one")
+	message.AddTag("key", "one")
 
 	require.Equal(t, []Tag{
 		Tag{"key", "one"},
-	}, tags.tags)
+	}, message.tags)
 
-	tags.Add("key", "two")
+	message.AddTag("key", "two")
 
 	require.Equal(t, []Tag{
 		Tag{"key", "one"},
 		Tag{"key", "two"},
-	}, tags.tags)
+	}, message.tags)
 }
 
 func TestTagSet(t *testing.T) {
-	tags := Tags{}
+	message := Message{}
 
-	tags.Set("key", "one")
+	message.SetTag("key", "one")
 
 	require.Equal(t, []Tag{
 		Tag{"key", "one"},
-	}, tags.tags)
+	}, message.tags)
 
-	tags.Set("key", "two")
+	message.SetTag("key", "two")
 
 	require.Equal(t, []Tag{
 		Tag{"key", "two"},
-	}, tags.tags)
+	}, message.tags)
 
-	tags.Add("key", "three")
-	tags.Add("key", "four")
+	message.AddTag("key", "three")
+	message.AddTag("key", "four")
 
-	tags.Set("key", "five")
+	message.SetTag("key", "five")
 
 	require.Equal(t, []Tag{
 		Tag{"key", "five"},
-	}, tags.tags)
+	}, message.tags)
 
 }
 
 func TestTagIteration(t *testing.T) {
-	tags := Tags{}
-	tags.Add("1", "one")
-	tags.Add("2", "two")
-	tags.Add("3", "three")
+	message := Message{}
+	message.AddTag("1", "one")
+	message.AddTag("2", "two")
+	message.AddTag("3", "three")
 
 	seen := map[string]string{}
-	for tag := range tags.All() {
+	for tag := range message.Tags() {
 		seen[tag.Key] = tag.Value
 	}
 

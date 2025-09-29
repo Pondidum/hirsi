@@ -79,11 +79,13 @@ func TestFormatMessage(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.message, func(t *testing.T) {
 
-			actual := formatMessage(terms, &message.Message{
+			m := &message.Message{
 				WrittenAt: time.Date(2024, 10, 03, 22, 26, 31, 0, time.UTC),
 				Message:   tc.message,
-				Tags:      message.NewTagsFrom(tc.tags),
-			})
+			}
+			m.AddTags(tc.tags...)
+
+			actual := formatMessage(terms, m)
 
 			assert.Equal(t, tc.expected, string(actual))
 		})

@@ -151,7 +151,7 @@ func formatMessage(terms []*Term, m *message.Message) []byte {
 	sb.WriteString("- ")
 	sb.WriteString(m.WrittenAt.Format("15:04"))
 	sb.WriteString(" ")
-	sb.WriteString(buildTags(m.Tags.All()))
+	sb.WriteString(buildTags(m.Tags()))
 	sb.WriteString("\n")
 
 	lines := strings.Split(linkify(terms, m.Message), "\n")

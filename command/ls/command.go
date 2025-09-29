@@ -47,7 +47,7 @@ func (c *LsCommand) Execute(ctx context.Context, cfg *config.Config, args []stri
 	output[0] = "stored_at | written_at | message | tags"
 
 	for i, m := range messages {
-		output[i+1] = fmt.Sprintf("%s | %s | %s | %s", m.StoredAt, m.WrittenAt, m.Message, tagsCsv(m.Tags.All()))
+		output[i+1] = fmt.Sprintf("%s | %s | %s | %s", m.StoredAt, m.WrittenAt, m.Message, tagsCsv(m.Tags()))
 	}
 
 	fmt.Println(tableOutput(output))

@@ -8,25 +8,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func newMessage(m string, tags ...message.Tag) *message.Message {
+	msg := &message.Message{
+		Message: m,
+	}
+	msg.AddTags(tags...)
+	return msg
+}
+
 func TestHasTagWithPrefix(t *testing.T) {
 
-	matching := &message.Message{
-		Message: "with tag",
-		Tags: []message.Tag{
-			message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/secret/project"},
-		},
-	}
-	nonMatching := &message.Message{
-		Message: "without tag",
-		Tags: []message.Tag{
-			message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/projects/hirsi"},
-		},
-	}
+	matching := newMessage(
+		"with tag",
+		message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/secret/project"},
+	)
+	nonMatching := newMessage(
+		"without tag",
+		message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/projects/hirsi"},
+	)
 
-	noTag := &message.Message{
-		Message: "no tags",
-		Tags:    []message.Tag{},
-	}
+	noTag := newMessage("no tags")
 
 	assert.True(t, HasTagWithPrefix("pwd", "/home/andy/dev/secret")(matching))
 	assert.False(t, HasTagWithPrefix("pwd", "/home/andy/dev/secret")(nonMatching))
@@ -36,23 +37,17 @@ func TestHasTagWithPrefix(t *testing.T) {
 
 func TestHasTagWithoutPrefix(t *testing.T) {
 
-	matching := &message.Message{
-		Message: "with tag",
-		Tags: []message.Tag{
-			message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/secret/project"},
-		},
-	}
-	nonMatching := &message.Message{
-		Message: "without tag",
-		Tags: []message.Tag{
-			message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/projects/hirsi"},
-		},
-	}
+	matching := newMessage(
+		"with tag",
+		message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/secret/project"},
+	)
 
-	noTag := &message.Message{
-		Message: "no tags",
-		Tags:    []message.Tag{},
-	}
+	nonMatching := newMessage(
+		"without tag",
+		message.Tag{Key: enhancement.PwdTag, Value: "/home/andy/dev/projects/hirsi"},
+	)
+
+	noTag := newMessage("no tags")
 
 	assert.False(t, HasTagWithoutPrefix("pwd", "/home/andy/dev/secret")(matching))
 	assert.True(t, HasTagWithoutPrefix("pwd", "/home/andy/dev/secret")(nonMatching))

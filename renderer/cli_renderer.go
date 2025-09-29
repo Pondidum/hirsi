@@ -35,7 +35,7 @@ func (r *CliRenderer) Render(m *message.Message) error {
 	r.template.Execute(&buf, map[string]any{
 		"Message":   m.Message,
 		"WrittenAt": m.WrittenAt,
-		"Tags":      r.buildTags(m.Tags.All()),
+		"Tags":      r.buildTags(m.Tags()),
 	})
 
 	fmt.Println(buf.String())
